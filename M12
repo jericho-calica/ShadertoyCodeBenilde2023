@@ -1,0 +1,850 @@
+// module 12
+
+#define white vec3(1.0)
+#define black vec3(0.0)
+#define gray vec3(0.5)
+#define red vec3(1.0, 0.0, 0.0)
+#define green vec3(0.0, 1.0, 0.0)
+#define blue vec3(0.0, 0.0, 1.0)
+#define PI 3.14159265358979323846
+
+float random (in vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
+float fnoise(vec2 uv)
+{
+    uv += distance(uv, vec2(0.0));
+    
+    vec2 index = floor(uv);
+    vec2 fractal = fract(uv);
+    float fracfloat = fractal.x * fractal.y;
+    
+    float a, b, c, d;
+    
+    a = random(index);
+    b = random(index + vec2(1.0, 0.0));
+    c = random(index + vec2(0.0, 1.0));
+    d = random(index + vec2(1.0, 1.0));
+    
+    vec2 u = (mod(fractal * fractal, fractal + 0.5) * (5.0 - (4.015 * fractal))) * fractal;
+    /*
+    a += smoothstep(a, b, uv.x / uv.y);
+    b += smoothstep(b, c, uv.x / uv.y);
+    c += smoothstep(c, d, uv.x / uv.y);
+    d += smoothstep(d, a, uv.x / uv.y);
+    */
+    float final = mix(a, b, u.x) +
+            (c - a)* u.y * (1.0 - u.x) +
+            (d - b) * u.x * u.y;
+    
+    //return 2.0 * smoothstep(final, fracfloat, distance(uv, index));
+    return final;
+}
+
+float dnoise(vec2 uv)
+{
+    uv += distance(uv, vec2(0.0));
+    
+    vec2 index = floor(uv);
+    vec2 fractal = fract(uv);
+    float fracfloat = fractal.x * fractal.y;
+    
+    float a, b, c, d;
+    
+    a = random(index);
+    b = random(index + vec2(1.0, 0.0));
+    c = random(index + vec2(0.0, 1.0));
+    d = random(index + vec2(1.0, 1.0));
+    
+    vec2 u = (mod(fractal * fractal, fracfloat) * (5.0 - (4.015 * fractal))) * fractal;
+    /*
+    a += smoothstep(a, b, uv.y / uv.x);
+    b += smoothstep(b, c, uv.y / uv.x);
+    c += smoothstep(c, d, uv.y / uv.x);
+    d += smoothstep(d, a, uv.y / uv.x);
+    */
+    float final = mix(a, b, u.x) +
+            (c - a)* u.y * (1.0 - u.x) +
+            (d - b) * u.x * u.y;
+    
+    //return 2.0 * smoothstep(final, fracfloat, distance(uv, index));
+    return final;
+}
+
+vec3 makeRect(vec2 uv, vec2 posX, vec2 posY, float blur, vec3 fill, vec3 border, bool displayOnlyBorders, float borderThickness)
+{
+    float tempBase;
+    float tempFill;
+    
+    tempBase = smoothstep(posX.x - blur, 
+                        posX.x + blur, 
+                        uv.x);
+    tempBase -= smoothstep(posY.x - blur, 
+                        posY.x + blur, 
+                        uv.x);
+    tempBase *= smoothstep(posX.y - blur, 
+                        posX.y + blur, 
+                        uv.y)
+                -
+                smoothstep(posY.y - blur, 
+                        posY.y + blur, 
+                        uv.y);
+                        
+    vec3 rect1 = vec3(tempBase);
+    
+    posX.x += borderThickness;
+    posX.y += borderThickness;
+    posY.x -= borderThickness;
+    posY.y -= borderThickness;
+                        
+    tempFill = smoothstep(posX.x - blur, 
+                        posX.x + blur, 
+                        uv.x);
+    tempFill -= smoothstep(posY.x - blur, 
+                        posY.x + blur, 
+                        uv.x);
+    tempFill *= smoothstep(posX.y - blur, 
+                        posX.y + blur, 
+                        uv.y)
+                -
+                smoothstep(posY.y - blur, 
+                        posY.y + blur, 
+                        uv.y);
+                        
+    vec3 rect2 = vec3(tempFill);
+        
+    rect1 *= border;
+    
+    if(displayOnlyBorders)
+    {
+        return vec3(max(rect1.x - rect2.x, 0.0), max(rect1.y - rect2.y, 0.0), max(rect1.z - rect2.z, 0.0)) * vec3(1.0); //returns borders
+    }
+    else
+    {
+        //deletes original square
+        vec3 temp = vec3(max(rect1.x - rect2.x, 0.0), max(rect1.y - rect2.y, 0.0), max(rect1.z - rect2.z, 0.0)) * vec3(1.0);
+        
+        rect2 *= fill;
+    
+        return temp + rect2; //returns filled with borders
+    }
+}
+
+vec3 makeCircle(vec2 uv, vec2 pos, float radius, float blur, vec3 color, bool isPulsing, float pulseWave)
+{
+    float circle = 0.0;
+    
+    if(isPulsing)
+    {
+        circle = smoothstep(
+                            radius, 
+                            radius + blur + pulseWave, 
+                            distance(uv, pos)
+                          );
+    }
+    else
+    {
+        circle = smoothstep(
+                            radius,
+                            radius + blur, 
+                            distance(uv, pos)
+                          );
+    }
+    
+    return (1.0 - circle) * color;
+}
+
+vec3 makeLine(vec2 uv, vec2 posX, vec2 posY, float thickness, vec3 color)
+{
+    vec2 allPixels = uv - posX;
+    vec2 direction = posY - posX;
+	float line = clamp(dot(allPixels, direction) / dot(direction, direction), 0.0, 1.0);
+    
+    if(length(allPixels - direction * line) < thickness)
+    {
+        return color;
+    }
+    else
+    {
+        return black;
+    }
+}
+
+mat2 rotate2d(float _angle){
+    return mat2(cos(_angle),-sin(_angle),
+                sin(_angle),cos(_angle));
+}
+
+mat2 scale(vec2 _scale){
+    return mat2(_scale.x,0.0,
+                0.0,_scale.y);
+}
+
+vec2 midpoint(vec2 pos1, vec2 pos2)
+{
+    return vec2((pos1.x + pos2.x) / 2.0, (pos1.y + pos2.y) / 2.0);
+}
+
+vec3 colorTranslate(float r, float g, float b)
+{
+    return vec3(r / 255.0, g / 255.0, b / 255.0);
+}
+
+vec3 normClamp(vec3 screen)
+{
+    return clamp(screen, 0.0, 1.0);
+}
+
+vec3 makeGear(vec2 uv, float angle, vec3 color)
+{
+    vec3 wheelBase = makeCircle(
+                            uv,  
+                            vec2(0.5), //pos
+                            smoothstep(-0.6, 0.5, cos(angle * 8.0)) * 0.1 + 0.3,
+                            0.0, color, false, 0.0);
+                            
+    vec3 wheelCover = makeCircle(
+                            uv,  
+                            vec2(0.5), //pos
+                            0.25,
+                            0.0, white, false, 0.0);
+    return wheelBase - wheelCover;
+}
+
+//===================================================================================================================
+
+vec3 shader(int num, vec2 mainUV, float ratio, vec2 centerPos, float angle)
+{
+    vec3 whiteCanvas = makeRect(mainUV, vec2(0.0 / ratio, 0.0), vec2(1.0 / ratio, 1.0), 0.0, white, white, false, 0.0);
+    
+    vec3 finalColor;
+    
+    switch(num)
+    {
+        case 1: //the second amendment
+            
+            //waves
+            float gunSliderWave = clamp((sin(iTime * 10.0) / 5.0 + 0.2 - 0.2) + (2.0 * sin(0.8 + iTime * 5.0) / 5.0) - 0.4, 0.0, 3.5);
+            vec2 bulletWave = vec2(
+                                    sqrt(tan(-0.1 + iTime * 2.5)), 
+                                    (sin(iTime * 10.0) / 5.0 + 0.2 - 0.2) + (2.0 * sin(0.8 + iTime * 5.0) / 5.0) - 0.4) / 1.25;
+            //gun
+            vec2 gunUV = mainUV;
+            gunUV -= vec2(centerPos.x + 0.1, centerPos.y - 0.1);
+            gunUV *= rotate2d(gunSliderWave * 2.0);
+            gunUV += vec2(centerPos.x + 0.1, centerPos.y - 0.1);;
+            
+            vec3 slider = makeRect(gunUV, 
+                                    vec2(centerPos.x - 0.15 + gunSliderWave, centerPos.y + 0.01), 
+                                    vec2(centerPos.x + 0.1 + gunSliderWave, centerPos.y + 0.055), 0.0, white / 2.0, white, false, 0.0);
+            
+            vec3 receiver = makeRect(gunUV, 
+                                    vec2(centerPos.x - 0.1, centerPos.y - 0.025), 
+                                    vec2(centerPos.x + 0.05, centerPos.y + 0.01), 0.0, white / 2.0, white, false, 0.0);
+            
+            vec3 barrel = makeRect(gunUV, 
+                                    vec2(centerPos.x - 0.16, centerPos.y + 0.015), 
+                                    vec2(centerPos.x + 0.05, centerPos.y + 0.04), 0.0, colorTranslate(192.0, 192.0, 192.0), white, false, 0.0);
+            
+            vec2 gripUV = gunUV;
+            gripUV -= vec2(centerPos.x + 0.05, centerPos.y - 0.02);
+            gripUV *= rotate2d(-0.6);
+            gripUV += vec2(centerPos.x + 0.05, centerPos.y - 0.02);
+            
+            vec3 grip = makeRect(gripUV, 
+                                    vec2(centerPos.x + 0.05, centerPos.y - 0.125), 
+                                    vec2(centerPos.x + 0.1, centerPos.y + 0.005), 0.0, colorTranslate(111.0, 78.0, 55.0), white, false, 0.0);
+            //bullet
+            vec2 bulletUV = mainUV;
+            bulletUV -= midpoint(
+                                vec2(centerPos.x - 0.025 + bulletWave.x, centerPos.y - 0.0075 + bulletWave.y), 
+                                vec2(centerPos.x + 0.025 + bulletWave.x, centerPos.y + 0.0075 + bulletWave.y));
+            bulletUV *= rotate2d(tan(iTime) * 30.0);
+            bulletUV += midpoint(
+                                vec2(centerPos.x - 0.025 + bulletWave.x, centerPos.y - 0.0075 + bulletWave.y), 
+                                vec2(centerPos.x + 0.025 + bulletWave.x, centerPos.y + 0.0075 + bulletWave.y));
+            vec3 bullet = makeRect(bulletUV, 
+                                    vec2(centerPos.x - 0.025 + bulletWave.x, centerPos.y - 0.0075 + bulletWave.y), 
+                                    vec2(centerPos.x + 0.025 + bulletWave.x, centerPos.y + 0.0075 + bulletWave.y), 0.0, red + green, white, false, 0.0);
+            
+            finalColor = normClamp(barrel - slider * 2.0) + slider + receiver + normClamp(grip - 2.0 * (slider + receiver)) + bullet;
+            finalColor = mix(finalColor, whiteCanvas, gunSliderWave * 4.0);
+            break;
+        
+        case 2: //hot air balloon
+            //finalColor = whiteCanvas;
+            vec2 balloonUV = mainUV;
+            //balloonUV *= 2.0;
+            //balloonUV -= 0.5;
+            
+            balloonUV.y += cos(iTime) / 50.0;
+            
+            float gentleSway = sin(iTime) / 30.0;
+            
+            vec2 basketPos = vec2(centerPos.x - 0.65 + gentleSway, centerPos.y - 0.4);
+            vec2 basketSize = vec2(0.25, 0.125);
+            vec3 basket = makeRect(balloonUV, 
+                                    basketPos, 
+                                    basketPos + basketSize, 0.0, colorTranslate(241.0, 178.0, 55.0), white, false, 0.0);
+            
+            vec2 balloonPos = midpoint(basketPos, basketPos + basketSize) + vec2(gentleSway * 2.0, 0.75);
+            float balloonRadius = 0.4;
+            vec3 balloon = makeCircle(balloonUV, 
+                            balloonPos, 
+                            balloonRadius, 
+                            0.01, 
+                            white / 1.2, 
+                            false, 0.0);
+            
+            basketPos += vec2(0.0, 0.2);
+            vec2 furnacePos = vec2(midpoint(basketPos, basketPos + basketSize).x - 0.075, midpoint(basketPos, basketPos + basketSize).y - 0.025) + vec2(gentleSway / 2.0, 0.0);
+            vec2 furnaceSize = vec2(0.15, 0.05);
+            vec3 furnace = makeRect(balloonUV, 
+                                    furnacePos, 
+                                    furnacePos + furnaceSize, 0.0, white / 2.0, white, false, 0.0);
+            
+            vec2 fireUV = balloonUV;
+            fireUV *= 15.0;
+            fireUV -= 2.0;
+            
+            vec3 fire;
+            for(float i = 0.0; i < 10.0; i += 1.0)
+            {
+        
+                fire += makeCircle(fireUV, 
+                            (midpoint(basketPos, basketPos + basketSize) * 15.0) - 2.0 + vec2(gentleSway * 15.0, 1.5), 
+                            fnoise(fireUV - iTime * 4.0), 
+                            0.5, 
+                            vec3(0.8, 0.1, 0.01), 
+                            false, 0.0);
+            }
+            
+            basketPos -= vec2(0.0, 0.2);
+            
+            vec3 finalRope;
+            vec3 rope1 = makeLine(balloonUV, 
+                                    basketPos + vec2(0.0, basketSize.y), 
+                                    furnacePos, 
+                                    0.005, colorTranslate(111.0, 78.0, 55.0));
+            vec3 rope2 = makeLine(balloonUV, 
+                                    basketPos + basketSize, 
+                                    furnacePos + vec2(furnaceSize.x, 0.0), 
+                                    0.005, colorTranslate(111.0, 78.0, 55.0));
+            
+            vec3 rope3 = makeLine(balloonUV, 
+                                    furnacePos + vec2(0.0, furnaceSize.y), 
+                                    balloonPos - vec2(balloonRadius, 0.0), 
+                                    0.005, colorTranslate(111.0, 78.0, 55.0));
+            vec3 rope4 = makeLine(balloonUV, 
+                                    furnacePos + furnaceSize, 
+                                    balloonPos + vec2(balloonRadius, 0.0), 
+                                    0.005, colorTranslate(111.0, 78.0, 55.0));
+            finalRope = rope1 + rope2 + rope3 + rope4;
+            
+            vec3 finalBalloon = normClamp(finalRope - (200.0 * balloon + furnace + basket)) + balloon + furnace + basket + normClamp(fire - (200.0 * furnace));
+            
+            vec3 finalBackground = green + (blue * mainUV.y * 3.0);
+            finalColor += normClamp(finalBackground - 200.0 * finalBalloon) + finalBalloon;
+            //finalColor = vec3(fnoise(fireUV));
+            
+            break;
+        
+        case 3: //slime load
+            mainUV *= 10.0;
+            mainUV.x += 1.5;
+            finalColor = blue / 2.0;
+            
+            float jiggleWave = sin(mainUV.x + iTime) * sin(mainUV.x + iTime) / 2.0 + 0.5;
+            float slimeMoveWave = fract(iTime / 20.0) * 20.0;
+            
+            float slimeHeight = 0.0;
+            
+            float eyeSpace = 0.5;
+            float eyeOffset = 0.6;
+            vec3 eye1 = makeCircle(mainUV, 
+                            centerPos + vec2(slimeMoveWave + jiggleWave - eyeOffset, 0.75 + jiggleWave / 5.0 + slimeHeight), 
+                            0.1, 
+                            0.01, 
+                            white / 1.2, 
+                            false, 0.0);
+            
+            vec3 eye2 = makeCircle(mainUV, 
+                            centerPos + vec2(slimeMoveWave + jiggleWave + eyeSpace - eyeOffset, 0.75 + jiggleWave / 5.0 + slimeHeight), 
+                            0.1, 
+                            0.01, 
+                            white / 1.2, 
+                            false, 0.0);
+            
+            vec3 blob = vec3(
+                            makeLine(mainUV, 
+                                            vec2(0.5) + vec2(slimeMoveWave, slimeHeight), 
+                                            vec2(1.0) + vec2(slimeMoveWave, slimeHeight), 
+                                            jiggleWave, red));
+            
+            vec3 finalSlime = blob - eye1 - eye2;
+            
+            //bar
+            vec3 loadBarProgress = makeRect(mainUV, 
+                                    vec2(2.0, 3.0), 
+                                    vec2(slimeMoveWave, 5.0), 0.01, green, white, false, 0.1);
+            
+            vec3 letterColor = white;
+            
+            vec3 loadBar = makeRect(mainUV, 
+                                    vec2(2.0, 3.0), 
+                                    vec2(18.75, 5.0), 0.01, loadBarProgress, white, false, 0.1);
+            //L
+            vec3 letter1 = makeRect(mainUV, 
+                                    vec2(2.0, 6.0), 
+                                    vec2(3.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter2 = makeRect(mainUV, 
+                                    vec2(2.0, 6.0), 
+                                    vec2(4.0, 7.0), 0.0, letterColor, white, false, 0.1);
+            //O
+            vec3 letter3 = makeRect(mainUV, 
+                                    vec2(5.0, 6.0), 
+                                    vec2(6.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter4 = makeRect(mainUV, 
+                                    vec2(5.0, 6.0), 
+                                    vec2(8.0, 7.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter5 = makeRect(mainUV, 
+                                    vec2(7.0, 6.0), 
+                                    vec2(8.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter6 = makeRect(mainUV, 
+                                    vec2(5.0, 8.0), 
+                                    vec2(8.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            //A
+            vec3 letter7 = makeRect(mainUV, 
+                                    vec2(9.0, 6.0), 
+                                    vec2(10.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter8 = makeRect(mainUV, 
+                                    vec2(11.0, 6.0), 
+                                    vec2(12.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter9 = makeRect(mainUV, 
+                                    vec2(9.0, 8.0), 
+                                    vec2(12.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter10 = makeRect(mainUV, 
+                                    vec2(9.0, 6.5), 
+                                    vec2(12.0, 7.5), 0.0, letterColor, white, false, 0.1);
+            //D
+            vec3 letter11 = makeRect(mainUV, 
+                                    vec2(13.0, 6.0), 
+                                    vec2(14.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter12 = makeRect(mainUV, 
+                                    vec2(13.0, 8.0), 
+                                    vec2(15.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter13 = makeRect(mainUV, 
+                                    vec2(13.0, 6.0), 
+                                    vec2(15.0, 7.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter14 = makeRect(mainUV, 
+                                    vec2(15.0, 7.0), 
+                                    vec2(16.0, 8.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter15 = makeRect(mainUV, 
+                                    vec2(17.0, 7.0), 
+                                    vec2(18.0, 9.0), 0.0, letterColor, white, false, 0.1);
+            
+            vec3 letter16 = makeRect(mainUV, 
+                                    vec2(17.0, 6.0), 
+                                    vec2(18.0, 6.5), 0.0, letterColor, white, false, 0.1);
+            
+            if(slimeMoveWave < 19.0)
+            {
+                letter15 = vec3(0.0);
+                letter16 = vec3(0.0);
+            }
+            
+            vec3 finalLetters = letter1 + letter2 + letter3 + letter4 + letter5 + letter6 + letter7 + letter8 + letter9 + letter10
+                                + letter11 + letter12 + letter13 + letter14 + letter15 + letter16;
+            
+            finalColor += finalSlime + loadBar + finalLetters;
+            
+            break;
+        
+        case 4://diamond security
+            
+            float standX = 0.2;
+            vec3 stand = makeRect(mainUV, 
+                                    centerPos + vec2(-standX, -0.5), 
+                                    centerPos + vec2(standX, -0.15), 0.0, colorTranslate(111.0, 78.0, 55.0), white, false, 0.0);
+            
+            vec2 diamondUV = mainUV;
+            diamondUV -= centerPos;
+            diamondUV *= rotate2d(0.8);
+            diamondUV += centerPos;
+            
+            vec2 innerDiamondUV = diamondUV;
+            innerDiamondUV *= 20.0;
+            
+            vec3 diamond = makeRect(diamondUV, 
+                                    centerPos - 0.1, 
+                                    centerPos + 0.1, 0.0, vec3(dnoise(innerDiamondUV + iTime)), white, false, 0.0);
+            
+            vec3 diamondHalfOff = makeRect(mainUV, 
+                                    vec2(0.0, centerPos.y + 0.05), 
+                                    centerPos + 1.0, 0.0, white, white, false, 0.0);
+            
+            diamondHalfOff *= 10.0;
+            
+            vec3 glass = makeRect(mainUV, 
+                                    centerPos + vec2(-standX + 0.025, -0.15), 
+                                    centerPos + vec2(standX - 0.025, 0.10), 0.0, vec3(0.2, 0.2, 0.4), white, false, 0.0);
+            
+            vec3 finalLasers;
+            
+            for(float i = 0.0; i < 3.0; i += 1.0)
+            {
+                vec3 laserTemp = makeLine(mainUV, vec2(centerPos.x, 1.0), vec2((sin(i + iTime) / 2.0 + 0.5) / ratio, -i), 0.005, red / 2.0);
+                finalLasers += laserTemp;
+            }
+            
+            for(float i = 0.0; i < 3.0; i += 1.0)
+            {
+                vec3 laserTemp = makeLine(mainUV, vec2(0.0, 1.0), vec2((sin(i + iTime * 0.25) / 2.0 + 0.5) / ratio, -i), 0.005, red / 2.0);
+                finalLasers += laserTemp;
+            }
+            
+            for(float i = 0.0; i < 3.0; i += 1.0)
+            {
+                vec3 laserTemp = makeLine(mainUV, vec2(centerPos.x * 2.0, 1.0), vec2((sin(i + iTime * 0.75) / 2.0 + 0.5) / ratio, -i), 0.005, red / 2.0);
+                finalLasers += laserTemp;
+            }
+            
+            finalColor = stand + normClamp(diamond - diamondHalfOff) + glass + finalLasers;
+            
+            //mainUV *= 10.0;
+            //mainUV -= 5.0;
+            //finalColor = vec3(dnoise(mainUV));
+            
+            break;
+        
+        case 5:
+            
+            //main circle
+            
+            float mainCircleRadius = 0.4;
+            float mainCircleRim = 0.01;
+            
+            vec3 mainCircle = makeCircle(mainUV, centerPos, mainCircleRadius, 0.0, white, false, 0.0);
+            vec3 mainCircleCover = makeCircle(mainUV, centerPos, mainCircleRadius - mainCircleRim, 0.0, white, false, 0.0);
+            mainCircle = normClamp(mainCircle - mainCircleCover);
+            
+            //sub circles
+            
+            float subCircle1Radius = mainCircleRadius - 0.05;
+            vec3 subCircle1 = makeCircle(mainUV, centerPos, subCircle1Radius, 0.0, white, false, 0.0);
+            vec3 subCircle1Cover = makeCircle(mainUV, centerPos, subCircle1Radius - mainCircleRim, 0.0, white, false, 0.0);
+            subCircle1 = normClamp(subCircle1 - subCircle1Cover);
+            
+            float subCircle2Radius = mainCircleRadius - 0.2;
+            vec3 subCircle2 = makeCircle(mainUV, centerPos, subCircle2Radius, 0.0, white, false, 0.0);
+            vec3 subCircle2Cover = makeCircle(mainUV, centerPos, subCircle2Radius - 0.05, 0.0, white, false, 0.0);
+            subCircle2 = normClamp(subCircle2 - subCircle2Cover);
+            
+            vec3 finalCircles = mainCircle + subCircle1 + subCircle2;
+            
+            //red bars
+            
+            vec3 finalRedBars;
+            float redBarSize = 0.0075;
+            float redBarWave = clamp(sin(5.0 + iTime) / 2.0, 0.0, 0.15);
+            
+            vec2 redBarUV = mainUV;
+            redBarUV -= centerPos;
+            redBarUV *= rotate2d(tan(iTime / 2.0) / 2.0);
+            redBarUV += centerPos;
+            
+            for(int i = 0; i < 12; i++)
+            {
+                float index = float(i);
+                vec2 redBarUVTEMP = redBarUV;
+                redBarUVTEMP -= centerPos;
+                redBarUVTEMP *= rotate2d(index * 0.525);
+                redBarUVTEMP += centerPos;
+                
+                float barHeight = 0.05;
+                
+                if(mod(index, 2.0) == 0.0)
+                {
+                    barHeight *= 5.0;
+                }
+                
+                vec3 redBar = makeRect(redBarUVTEMP, 
+                                        centerPos + vec2(-redBarSize, mainCircleRadius - barHeight + redBarWave), 
+                                        centerPos + vec2(redBarSize, mainCircleRadius + redBarWave), 
+                                        0.0, red, red, false, 0.0);
+                finalRedBars += redBar;
+            }
+            
+            //black bars
+            
+            vec3 finalBlackBars;
+            float blackBarSize = 0.0075;
+            
+            vec2 blackdBarUV = mainUV;
+            blackdBarUV -= centerPos;
+            blackdBarUV *= rotate2d(-iTime / 2.0);
+            blackdBarUV += centerPos;
+            
+            //63
+            for(int i = 0; i < 63; i++)
+            {
+                float index = float(i);
+                vec2 blackdBarUVTEMP = blackdBarUV;
+                blackdBarUVTEMP -= centerPos;
+                blackdBarUVTEMP *= rotate2d(index * 0.1);
+                blackdBarUVTEMP += centerPos;
+                
+                float barHeight = 0.02;
+                
+                if(mod(index, 3.0) == 0.0)
+                {
+                    barHeight *= 10.0;
+                }
+                
+                vec3 blackBar = makeRect(blackdBarUVTEMP, 
+                                        centerPos + vec2(-blackBarSize, subCircle1Radius - barHeight), 
+                                        centerPos + vec2(blackBarSize, subCircle1Radius), 
+                                        0.0, white, white, false, 0.0);
+                finalBlackBars += blackBar;
+            }
+            
+            //lines
+            
+            vec2 al1JointPos = vec2(0.45, 0.1);
+            vec3 analysisLine1 = makeLine(mainUV, vec2(0.1), al1JointPos, 0.005, white);
+            vec3 analysisLine2 = makeLine(mainUV, al1JointPos, centerPos - 0.275, 0.005, white);
+            
+            vec2 al3JointPos = vec2(0.45, 0.9);
+            vec3 analysisLine3 = makeLine(mainUV, vec2(0.1, 0.9), al3JointPos, 0.005, white);
+            vec3 analysisLine4 = makeLine(mainUV, al3JointPos, centerPos + vec2(-0.05, 0.05), 0.005, white);
+            
+            vec3 finalAnalysisLines = analysisLine1 + analysisLine2 + analysisLine3 + analysisLine4;
+            finalAnalysisLines = normClamp(finalAnalysisLines);
+            
+            //line covers
+            
+            float lineCoverWave = sin(iTime / 2.0) + 1.0;
+            
+            vec3 lineCover1 = makeRect(mainUV, 
+                                        vec2(-lineCoverWave, 0.0), 
+                                        vec2(centerPos.x - lineCoverWave, 1.0), 
+                                        0.0, white, white, false, 0.0);
+            vec3 lineCover2 = makeRect(mainUV, 
+                                        vec2(centerPos.x + lineCoverWave, 0.0), 
+                                        vec2(centerPos.x * 2.0 + lineCoverWave, 1.0), 
+                                        0.0, white, white, false, 0.0);
+            
+            vec3 finalLineCovers = lineCover1 + lineCover2;
+            
+            finalColor = finalCircles + finalRedBars - finalBlackBars + normClamp(finalAnalysisLines - finalLineCovers);
+            
+            break;
+        
+        case 6:
+            
+            vec2 snowUV = mainUV;
+            
+            vec2 snowPatternUV1 = snowUV;
+            snowPatternUV1 *= 3.0;
+            snowPatternUV1.y += step(1.0, mod(snowPatternUV1.x, 2.0)) * 0.5 + iTime;
+            
+            vec2 spuvIndex1 = floor(snowPatternUV1);
+            snowPatternUV1 = fract(snowPatternUV1);
+            
+            snowUV.x += iTime / 2.0;
+            
+            vec2 snowPatternUV2 = snowUV;
+            snowPatternUV2 *= 4.0;
+            snowPatternUV2.y += step(1.0, mod(snowPatternUV2.x, 2.0)) * 0.5 + iTime;
+            
+            vec2 spuvIndex2 = floor(snowPatternUV2);
+            snowPatternUV2 = fract(snowPatternUV2);
+            float snowflakeSize = 0.01;
+            
+            vec3 spuv1Color = white / 1.3;
+            
+            vec2 snow1Pos = vec2(0.3, 0.8);
+            vec3 snow1 = makeRect(snowPatternUV1, snow1Pos - snowflakeSize, snow1Pos + snowflakeSize, 0.0, spuv1Color, white, false, 0.0);
+            vec2 snow2Pos = vec2(0.2, 0.5);
+            vec3 snow2 = makeRect(snowPatternUV1, snow2Pos - snowflakeSize, snow2Pos + snowflakeSize, 0.0, spuv1Color, white, false, 0.0);
+            vec2 snow3Pos = vec2(0.3, 0.2);
+            vec3 snow3 = makeRect(snowPatternUV1, snow3Pos - snowflakeSize, snow3Pos + snowflakeSize, 0.0, spuv1Color, white, false, 0.0);
+            
+            vec2 snow4Pos = vec2(0.65, 0.75);
+            vec3 snow4 = makeRect(snowPatternUV1, snow4Pos - snowflakeSize, snow4Pos + snowflakeSize, 0.0, spuv1Color, white, false, 0.0);
+            vec2 snow5Pos = vec2(0.8, 0.45);
+            vec3 snow5 = makeRect(snowPatternUV1, snow5Pos - snowflakeSize, snow5Pos + snowflakeSize, 0.0, spuv1Color, white, false, 0.0);
+            vec2 snow6Pos = vec2(0.6, 0.15);
+            vec3 snow6 = makeRect(snowPatternUV1, snow6Pos - snowflakeSize, snow6Pos + snowflakeSize, 0.0, spuv1Color, white, false, 0.0);
+            
+            vec3 spuv2Color = white / 2.0;
+            
+            vec2 snow7Pos = vec2(0.3, 0.8);
+            vec3 snow7 = makeRect(snowPatternUV2, snow7Pos - snowflakeSize, snow7Pos + snowflakeSize, 0.0, spuv2Color, white, false, 0.0);
+            vec2 snow8Pos = vec2(0.2, 0.5);
+            vec3 snow8 = makeRect(snowPatternUV2, snow8Pos - snowflakeSize, snow8Pos + snowflakeSize, 0.0, spuv2Color, white, false, 0.0);
+            vec2 snow9Pos = vec2(0.3, 0.2);
+            vec3 snow9 = makeRect(snowPatternUV2, snow9Pos - snowflakeSize, snow9Pos + snowflakeSize, 0.0, spuv2Color, white, false, 0.0);
+            
+            vec2 snow10Pos = vec2(0.65, 0.75);
+            vec3 snow10 = makeRect(snowPatternUV2, snow10Pos - snowflakeSize, snow10Pos + snowflakeSize, 0.0, spuv2Color, white, false, 0.0);
+            vec2 snow11Pos = vec2(0.8, 0.45);
+            vec3 snow11 = makeRect(snowPatternUV2, snow11Pos - snowflakeSize, snow11Pos + snowflakeSize, 0.0, spuv2Color, white, false, 0.0);
+            vec2 snow12Pos = vec2(0.6, 0.15);
+            vec3 snow12 = makeRect(snowPatternUV2, snow12Pos - snowflakeSize, snow12Pos + snowflakeSize, 0.0, spuv2Color, white, false, 0.0);
+            
+            vec3 finalSnowflakes = snow1 + snow2 + snow3 + snow4 + snow5 + snow6 + 
+                                    snow7 + snow8 + snow9 + snow10 + snow11 + snow12;
+            
+            //vec3 debug = makeRect(snowPatternUV2, vec2(0.0), vec2(1.0), 0.0, white, white, true, 0.1);
+            
+            vec3 iglooBase = makeCircle(mainUV, vec2(0.2, 0.0), 0.5, 0.05, vec3(0.8, 0.8, 0.85), false, 0.0);
+            vec3 iglooEntrance1 = makeCircle(mainUV, vec2(0.45, 0.1), 0.1, 0.0, vec3(0.8, 0.8, 0.85), false, 0.0);
+            vec3 iglooEntrance2 = makeRect(mainUV, vec2(0.35, 0.0),  vec2(0.55, 0.1), 0.0, vec3(0.8, 0.8, 0.85), white, false, 0.0);
+            
+            vec3 moon = makeCircle(mainUV, vec2(1.4, 0.8), 0.075, 0.05 + sin(iTime / 10.0) / 10.0 + 0.1, white, false, 0.0);
+            
+            vec3 finalIgloo = normClamp(iglooBase - iglooEntrance1 - iglooEntrance2);
+            
+            finalColor = finalSnowflakes + finalIgloo + moon;
+            
+            break;
+        
+        case 7:
+            float wheelZoom = 5.0;
+            //1
+            vec2 wheelUV1 = mainUV;
+            
+            wheelUV1 *= wheelZoom;
+            
+            wheelUV1 = fract(wheelUV1);
+            
+            wheelUV1 -= vec2(0.5);
+            wheelUV1 *= rotate2d(iTime);
+            wheelUV1 += vec2(0.5);
+            
+            angle = atan(wheelUV1.y - 0.5, wheelUV1.x - 0.5); //recenter
+            
+            vec3 finalWheel1 = makeGear(wheelUV1, angle, colorTranslate(110.0, 38.0, 14.0));
+            //2
+            vec2 wheelUV2 = mainUV;
+            
+            wheelUV2 *= wheelZoom;
+            wheelUV2 -= 0.5;
+            
+            wheelUV2 = fract(wheelUV2);
+            
+            wheelUV2 -= vec2(0.5);
+            wheelUV2 *= rotate2d(0.4 + -iTime);
+            wheelUV2 += vec2(0.5);
+            
+            angle = atan(wheelUV2.y - 0.5, wheelUV2.x - 0.5); //recenter
+            
+            vec3 finalWheel2 = makeGear(wheelUV2, angle, colorTranslate(55.0, 19.0, 7.0));
+            //3
+            vec2 wheelUV3 = mainUV;
+            
+            wheelUV3 = fract(wheelUV1);
+            
+            angle = atan(wheelUV3.y - 0.5, wheelUV3.x - 0.5); //recenter
+            
+            vec3 finalWheel3 = makeGear(wheelUV3, angle, colorTranslate(110.0, 38.0, 14.0));
+            
+            finalColor = normClamp(finalWheel1 - 2.0 * finalWheel2) + finalWheel2 + finalWheel3;
+            
+            break;
+        
+        case 8:
+            
+            finalColor = whiteCanvas;
+            
+            mainUV *= 1.5;
+            mainUV.y -= 0.15;
+            mainUV.x -= 0.4;
+            
+            vec2 joint1 = vec2(0.0);
+            vec2 joint2 = vec2(centerPos.x * 2.0, 0.0);
+            vec2 joint3 = vec2(centerPos.x, 1.3);
+            
+            float borderThickness = 0.05;
+            vec3 borderColor = white;
+            
+            vec3 redBorder1 = makeLine(mainUV, joint1, joint2, borderThickness, borderColor);
+            vec3 redBorder2 = makeLine(mainUV, joint2, joint3, borderThickness, borderColor);
+            vec3 redBorder3 = makeLine(mainUV, joint3, joint1, borderThickness, borderColor);
+            
+            vec3 finalBorders = redBorder1 + redBorder2 + redBorder3;
+            finalBorders = normClamp(finalBorders);
+            
+            vec3 stem = makeRect(mainUV, centerPos + vec2(-0.05, -0.4), centerPos + vec2(0.05, 0.4), 0.0, white, white, false, 0.0);
+            
+            float crossSize = 0.05;
+            float crossLength = 0.2;
+            
+            centerPos.y += 0.25;
+            
+            float gentleWave = sin(iTime * 1.5) / 75.0;
+            
+            vec3 cross1 = makeLine(mainUV, centerPos + vec2(-crossLength, -crossLength + gentleWave), centerPos + vec2(crossLength, crossLength / 5.0 - gentleWave), crossSize, white);
+            vec3 cross2 = makeLine(mainUV, centerPos + vec2(-crossLength, crossLength / 5.0 - gentleWave), centerPos + vec2(crossLength, -crossLength + gentleWave), crossSize, white);
+            
+            centerPos.y -= 0.25;
+            centerPos.y -= 0.2;
+            
+            vec2 beamUV = mainUV;
+            beamUV -= centerPos;
+            beamUV *= rotate2d(sin(iTime * 2.0) / 7.0);
+            beamUV += centerPos;
+            
+            vec3 beam = makeRect(beamUV, centerPos + vec2(0.2, 0.1), centerPos + vec2(-0.2, 0.05), 0.0, white, white, false, 0.0);
+            
+            vec3 finalSign = stem + cross1 + cross2 + beam;
+            
+            float lightRadius = 0.05;
+            
+            vec3 light1 = makeCircle(beamUV, centerPos + vec2(-0.2, 0.0), lightRadius, 0.0, white, true, sin(iTime * 5.0) / 10.0 + 0.1);
+            vec3 light2 = makeCircle(beamUV, centerPos + vec2(0.2, 0.0), lightRadius, 0.0, white, true, sin(3.0 + iTime * 5.0) / 10.0 + 0.1);
+            
+            vec3 finalLights = light1 + light2;
+            
+            finalColor = normClamp(finalColor - finalBorders) + (finalBorders * red) - finalSign;
+            finalColor = normClamp(finalColor);
+            finalColor = normClamp(finalColor - finalLights) + (finalLights * red);
+            
+            break;
+        
+    }
+    
+    return finalColor;
+}
+
+//===================================================================================================================
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    float ratio = iResolution.y / iResolution.x; // resolution
+    vec2 uv = fragCoord/iResolution.xy;
+    uv.x /= ratio;
+    
+    vec2 centerPos = vec2(0.5 / ratio, 0.5);
+    
+    float angle = atan(uv.y - centerPos.y, uv.x - centerPos.x);
+    
+    //shaders number from 1-8
+    
+    fragColor = vec4(shader(0, //change the first parameter (int) of shader function to change shader
+                            uv, ratio, centerPos, angle),
+                            1.0);
+}
