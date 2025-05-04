@@ -3,6 +3,71 @@
 #define white vec3(1.0)
 #define black vec3(0.0)
 #define red vec3(1.0, 0.0, 0.0)
+#define green vec3(0.0, 1.0, 0.0)
+#define blue vec3(0.0, 0.0, 1.0)
+
+vec3 makeRect(vec2 uv, vec2 posX, vec2 posY, vec3 fill, vec3 border, bool displayOnlyBorders, float borderThickness)
+{
+    float tempBase;
+    float tempFill;
+    
+    tempBase = smoothstep(posX.x, 
+                        posX.x, 
+                        uv.x);
+    tempBase -= smoothstep(posY.x, 
+                        posY.x, 
+                        uv.x);
+    tempBase *= smoothstep(posX.y, 
+                        posX.y, 
+                        uv.y)
+                        
+                -
+                        
+                smoothstep(posY.y, 
+                        posY.y, 
+                        uv.y);
+                        
+    vec3 rect1 = vec3(tempBase);
+    
+    posX.x += borderThickness;
+    posX.y += borderThickness;
+    posY.x -= borderThickness;
+    posY.y -= borderThickness;
+                        
+    tempFill = smoothstep(posX.x, 
+                        posX.x, 
+                        uv.x);
+    tempFill -= smoothstep(posY.x, 
+                        posY.x, 
+                        uv.x);
+    tempFill *= smoothstep(posX.y, 
+                        posX.y, 
+                        uv.y)
+                        
+                -
+                        
+                smoothstep(posY.y, 
+                        posY.y, 
+                        uv.y);
+                        
+    vec3 rect2 = vec3(tempFill);
+        
+        rect1 *= border;
+    
+    if(displayOnlyBorders)
+    {
+        return vec3(max(rect1.x - rect2.x, 0.0), max(rect1.y - rect2.y, 0.0), max(rect1.z - rect2.z, 0.0)) * vec3(1.0); //returns borders
+    }
+    else
+    {
+        //deletes original square
+        vec3 temp = vec3(max(rect1.x - rect2.x, 0.0), max(rect1.y - rect2.y, 0.0), max(rect1.z - rect2.z, 0.0)) * vec3(1.0);
+        
+        rect2 *= fill;
+    
+        return temp + rect2; //returns filled with borders
+    }
+}
 
 vec3 makeCircle(vec2 uv, vec2 pos, float radius, float blur, vec3 color, bool isPulsing)
 {
@@ -28,242 +93,47 @@ vec3 makeCircle(vec2 uv, vec2 pos, float radius, float blur, vec3 color, bool is
     return (1.0 - circle) * color;
 }
 
+mat2 rotate2d(float _angle){
+    return mat2(cos(_angle),-sin(_angle),
+                sin(_angle),cos(_angle));
+}
+
+mat2 scale(vec2 _scale){
+    return mat2(_scale.x,0.0,
+                0.0,_scale.y);
+}
+
 void mainImage( out vec4 fragColor, in vec2 fragCoord )
 {
     float ratio = iResolution.y / iResolution.x; // resolution
     vec2 uv = fragCoord/iResolution.xy;
     uv.x /= ratio;
     
-    //ps09
-    //a
-    /*
     vec2 pos = vec2(0.5 / ratio, 0.5);
-    float radius = 0.2;
     
-    float f = step(
-                    radius, 
-                    distance(uv, pos)
-                  ); 
-                  //calcualtes distance between all points and the position, 
-                  //then step will show if it is within the radius of the position
-    
-    vec3 col = vec3(f);
-    fragColor = vec4(col, 1.0);
-    */
-    
-    //b
+    //ps11
     /*
-    vec2 pos = vec2(0.5 / ratio, 0.5);
-    float radius = 0.2;
     
-    float f = step(
-                    radius, 
-                    distance(uv, pos)
-                  );
+    vec2 translate = vec2(cos(iTime), sin(iTime));
+    //uv += translate * 0.5;
     
-    vec3 col = 1.0 - vec3(f);
-    fragColor = vec4(col, 1.0);
-    */
+    uv -= pos;
+    uv *= rotate2d(sin(abs(tan(iTime)))); //i think i found the pinwheel code on accident
+    uv += pos;
     
-    //c
-    /*
-    float blur = 0.01;
-    vec2 pos = vec2(0.5 / ratio, 0.5);
-    float radius = 0.2;
-    
-    float f = smoothstep(
-                    radius,
-                    radius + blur, 
-                    distance(uv, pos)
-                  );
-    
-    vec3 col = vec3(f);
-    fragColor = vec4(col, 1.0);
-    */
-    
-    //d
-    /*
-    vec3 circle = makeCircle(
-                                uv,
-                                vec2(0.5 / ratio, 0.5), //position
-                                0.2, //radius
-                                0.01, //blur
-                                white, //color
-                                false); //is pulsing
-    
-    fragColor = vec4(circle, 1.0);
-    */
-    
-    //e
-    /*
-    vec3 circle = makeCircle(
-                                uv, 
-                                vec2(0.5 / ratio, 0.5), //position
-                                0.22, //radius
-                                0.01, //blur
-                                red, //color
-                                true); //is pulsing
-    
-    fragColor = vec4(circle, 1.0);
-    */
-    
-    //f
-    /*
-    vec3 circle1 = makeCircle(
-                                uv, 
-                                vec2(0.5 / ratio, 0.5), //position
-                                0.05, //radius
-                                0.01, //blur
-                                red, //color
-                                true); //is pulsing
-                                
-    vec3 circle2 = makeCircle(
-                                uv, 
-                                vec2(0.2 / ratio, 0.7), //position
-                                0.05, //radius
-                                0.01, //blur
-                                red, //color
-                                true); //is pulsing
-                                
-    vec3 circle3 = makeCircle(
-                                uv, 
-                                vec2(0.8 / ratio, 0.3), //position
-                                0.05, //radius
-                                0.01, //blur
-                                red, //color
-                                true); //is pulsing
-                                
-    vec3 circle4 = makeCircle(
-                                uv, 
-                                vec2(0.8 / ratio, 0.7), //position
-                                0.05, //radius
-                                0.01, //blur
-                                red, //color
-                                true); //is pulsing
-                                
-    vec3 circle5 = makeCircle(
-                                uv, 
-                                vec2(0.2 / ratio, 0.3), //position
-                                0.05, //radius
-                                0.01, //blur
-                                red, //color
-                                true); //is pulsing
-                                
-    vec3 finalCircles = circle1 + circle2 + circle3 + circle4 + circle5;
-    
-    fragColor = vec4(finalCircles, 1.0);
-    */
-    
-    //g
-    /*
-    vec2 pos = vec2(0.5 / ratio, 0.5);
-    float radius = 0.1;
-    float blur = 0.01;
-    */
-    
-    //1
-    /*
-    vec3 circle1 = makeCircle(
-                                uv, 
-                                vec2(0.5 / ratio, 0.5), //position
-                                0.15, //radius
-                                0.01, //blur
-                                red, //color
-                                true); //is pulsing
-    
-    
-    circle1 *= distance(uv, vec2(0.4 / ratio, 0.4)) + distance(uv, vec2(0.6 / ratio, 0.6));
-    circle1 /= distance(uv, vec2(0.4 / ratio, 0.4)) * distance(uv, vec2(0.6 / ratio, 0.6));
-    
-    vec3 color = sin((circle1) * iTime / 2.0) * white;
-    
-    fragColor = vec4(color, 1.0);
-    */
-    
-    //2
-    /*
-    vec3 circle1 = makeCircle(
-                                uv, 
-                                vec2(0.5 / ratio, 0.5), //position
-                                0.22, //radius
-                                0.05, //blur
-                                red, //color
-                                true); //is pulsing
-                                
-    circle1 *= min(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    circle1 /= max(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    circle1 *= pow(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    
-    vec3 circle2 = makeCircle(
-                                uv, 
-                                vec2(0.3 / ratio, 0.5), //position
-                                0.22, //radius
-                                0.05, //blur
-                                white, //color
-                                false); //is pulsing
-                                
-    circle2 += min(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    circle2 *= max(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    circle2 /= pow(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    
-    vec3 circle3 = makeCircle(
-                                uv, 
-                                vec2(0.7 / ratio, 0.5), //position
-                                0.22, //radius
-                                0.05, //blur
-                                white, //color
-                                false); //is pulsing
-                                
-    circle3 += min(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    circle3 *= max(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    circle3 /= pow(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    
-    vec3 color = (circle1 / sin(iTime * uv.x) / 3.0) - (circle2 / circle3);
-    
-    fragColor = vec4(color, 1.0);
-    */
-    
-    //3
-    /*
-    vec3 circle1 = makeCircle(
-                                uv, 
-                                vec2(0.5 / ratio, 0.5), //position
-                                0.25, //radius
-                                0.01, //blur
-                                red, //color
-                                false); //is pulsing
-                                
-    circle1 /= distance(uv, vec2(0.4 / ratio, 0.4)) * distance(uv, vec2(0.6 / ratio, 0.6));
-    
-    vec3 circle2 = makeCircle(
-                                uv, 
-                                vec2(0.5 / ratio, 0.5), //position
-                                0.2, //radius
-                                0.05, //blur
-                                red, //color
-                                true); //is pulsing
-                                
-    circle2 -= pow(distance(uv, vec2(0.4 / ratio, 0.4)), distance(uv, vec2(0.6 / ratio, 0.6)));
-    
-    vec3 color = (circle1 - (circle2 * 50.0)) * red * sin(iTime);
-    
-    fragColor = vec4(color, 1.0);
-    */
-    
-    //ps10
-    /*
-    vec2 pos = vec2(0.5 / ratio, 0.5);
+    uv -= pos;
+    uv *= scale(vec2(tan(iTime)));
+    uv += pos;
     
     float angle = atan(uv.y - pos.y, uv.x - pos.x);
     
     vec3 circle1 = makeCircle(
                                 uv, 
                                 pos, //position
-                                0.3 * sqrt(acos(cos(angle * 8.0))) * abs(tan(iTime)), //radius
+                                0.3 * sqrt(acos(cos(angle * 8.0))) * clamp(abs(tan(iTime)), 0.0, 1.0), //radius
                                 0.01, //blur
                                 white, //color
                                 false); //is pulsing
-                                
     vec3 circle2 = makeCircle(
                                 uv, 
                                 pos, //position
@@ -296,7 +166,171 @@ void mainImage( out vec4 fragColor, in vec2 fragCoord )
                                 white, //color
                                 false); //is pulsing
     
-    vec3 color = clamp(circle1 + 0.0, 0.0, 1.0) - circle3 + circle4 - circle5;
+    vec3 color = clamp(circle1 + 0.0, 0.0, 1.0) - circle3 + circle4 - (circle5);
     fragColor = vec4(color, 1.0);
+    */
+    
+    //ps12
+    /*
+    vec2 centerPos = vec2(0.5 / ratio, 0.5);
+    float crosshairThinness = 0.002;
+    float crosshairLength = 30.0;
+    float crosshairWave = abs(sin(iTime * 5.0) / 10.0 + 0.125);
+    
+    vec3 testRect = makeRect(
+                            uv, 
+                            vec2(0.0 / ratio, 0.0), //posX
+                            vec2(centerPos), //posY
+                            vec3(0.0, 1.0, 1.0), //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec2 translate = vec2(cos(iTime * 2.0) / 1.5, sin(iTime) * cos(iTime)); //moves crosshair around
+    vec2 crossUV = uv;
+    crossUV += translate * 0.5;
+    //use different uv
+    crossUV -= pos;
+    crossUV *= rotate2d(sin(iTime * 2.0)); // rotates
+    crossUV += pos;
+    
+    vec3 crosshairNorth = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x - crosshairThinness, centerPos.y - crosshairThinness + crosshairWave), //posX
+                            vec2(centerPos.x + crosshairThinness, centerPos.y + crosshairThinness * crosshairLength + crosshairWave), //posY
+                            white, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 crosshairSouth = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x - crosshairThinness, centerPos.y - crosshairThinness * crosshairLength - crosshairWave), //posX
+                            vec2(centerPos.x + crosshairThinness, centerPos.y + crosshairThinness - crosshairWave), //posY
+                            white, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 crosshairEast = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x + crosshairThinness * crosshairLength + crosshairWave, centerPos.y + crosshairThinness), //posX
+                            vec2(centerPos.x - crosshairThinness + crosshairWave, centerPos.y - crosshairThinness), //posY
+                            white, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 crosshairWest = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x + crosshairThinness - crosshairWave, centerPos.y + crosshairThinness), //posX
+                            vec2(centerPos.x - crosshairThinness * crosshairLength - crosshairWave, centerPos.y - crosshairThinness), //posY
+                            white, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 crosshairDot = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x + crosshairThinness * 2.0, centerPos.y + crosshairThinness * 2.0), //posX
+                            vec2(centerPos.x - crosshairThinness * 2.0, centerPos.y - crosshairThinness * 2.0), //posY
+                            red, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 finalCrosshair = clamp(crosshairNorth + crosshairSouth + crosshairEast + crosshairWest + crosshairDot, 0.0, 1.0);
+    
+    vec3 viewWindow = makeCircle(
+                                uv, 
+                                pos, //position
+                                0.5, //radius
+                                0.01, //blur
+                                white, //color
+                                false); //is pulsing
+    
+    vec3 monitor = makeCircle(
+                                uv, 
+                                pos, //position
+                                1.5, //radius
+                                0.01, //blur
+                                vec3(0.05, 0.1, 0.2), //color
+                                false); //is pulsing
+    
+    vec3 button = makeCircle(
+                                uv, 
+                                vec2(1.6, 0.5), //position
+                                0.02, //radius
+                                0.01, //blur
+                                red, //color
+                                true); //is pulsing
+    
+    vec3 bar1 = makeRect(
+                            uv, 
+                            vec2(0.05), //posX
+                            vec2(0.1, 0.5 + sin(iTime) / 5.0), //posY
+                            red, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 bar2 = makeRect(
+                            uv, 
+                            vec2(0.125, 0.05), //posX
+                            vec2(0.175, 0.5 + cos(iTime) / 3.0 + 0.15), //posY
+                            green, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 bar3 = makeRect(
+                            uv, 
+                            vec2(0.25, 0.05), //posX
+                            vec2(0.2, 0.5 + clamp(tan(iTime * 2.0), -0.1, 0.3)), //posY
+                            blue, //fill
+                            vec3(0.0, 0.0, 0.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 finalBars = bar1 + bar2 + bar3;
+    
+    vec2 target1UV = uv;
+    vec2 t1PosX = vec2(0.6, 0.6);
+    vec2 t1PosY = vec2(0.7, 0.7);
+    //calculate midpoint and balance on that
+    target1UV -= vec2((t1PosX.x + t1PosY.x)/ 2.0, (t1PosX.y + t1PosY.y)/ 2.0);
+    target1UV *= scale(vec2(sin(iTime * 5.0) / 5.0 + 1.0)); //wave
+    target1UV += vec2((t1PosX.x + t1PosY.x)/ 2.0, (t1PosX.y + t1PosY.y)/ 2.0);
+    
+    vec3 target1 = makeRect(
+                            target1UV, 
+                            t1PosX, //posX
+                            t1PosY, //posY
+                            black, //fill
+                            vec3(1.0, 0.0, 0.0), //border
+                            true, //display only borders
+                            0.01); //border thickness
+    
+    vec2 target2UV = uv;
+    vec2 t2PosX = vec2(1.1, 0.3);
+    vec2 t2PosY = vec2(1.2, 0.4);
+    //calculate midpoint and balance on that
+    target2UV -= vec2((t2PosX.x + t2PosY.x)/ 2.0, (t2PosX.y + t2PosY.y)/ 2.0);
+    target2UV *= scale(vec2(cos(iTime * 5.0) / 5.0 + 1.0)); //wave
+    target2UV += vec2((t2PosX.x + t2PosY.x)/ 2.0, (t2PosX.y + t2PosY.y)/ 2.0);
+    
+    vec3 target2 = makeRect(
+                            target2UV, 
+                            t2PosX, //posX
+                            t2PosY, //posY
+                            black, //fill
+                            vec3(1.0, 0.0, 0.0), //border
+                            true, //display only borders
+                            0.01); //border thickness
+    
+    vec3 finalTargets = target1 + target2;
+    
+    vec3 finalColor = clamp((finalCrosshair + finalTargets) * viewWindow + clamp(monitor - viewWindow, 0.0, 1.0), 0.0, 1.0) + button + finalBars;
+    fragColor = vec4(finalColor, 1.0);
     */
 }
