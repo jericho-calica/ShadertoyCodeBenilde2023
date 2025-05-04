@@ -1,0 +1,1141 @@
+// module 7
+
+#define white vec3(1.0)
+#define black vec3(0.0)
+#define gray vec3(0.5)
+#define red vec3(1.0, 0.0, 0.0)
+#define green vec3(0.0, 1.0, 0.0)
+#define blue vec3(0.0, 0.0, 1.0)
+#define PI 3.14159265358979323846
+
+vec3 makeRect(vec2 uv, vec2 posX, vec2 posY, float blur, vec3 fill, vec3 border, bool displayOnlyBorders, float borderThickness)
+{
+    float tempBase;
+    float tempFill;
+    
+    tempBase = smoothstep(posX.x - blur, 
+                        posX.x + blur, 
+                        uv.x);
+    tempBase -= smoothstep(posY.x - blur, 
+                        posY.x + blur, 
+                        uv.x);
+    tempBase *= smoothstep(posX.y - blur, 
+                        posX.y + blur, 
+                        uv.y)
+                -
+                smoothstep(posY.y - blur, 
+                        posY.y + blur, 
+                        uv.y);
+                        
+    vec3 rect1 = vec3(tempBase);
+    
+    posX.x += borderThickness;
+    posX.y += borderThickness;
+    posY.x -= borderThickness;
+    posY.y -= borderThickness;
+                        
+    tempFill = smoothstep(posX.x - blur, 
+                        posX.x + blur, 
+                        uv.x);
+    tempFill -= smoothstep(posY.x - blur, 
+                        posY.x + blur, 
+                        uv.x);
+    tempFill *= smoothstep(posX.y - blur, 
+                        posX.y + blur, 
+                        uv.y)
+                -
+                smoothstep(posY.y - blur, 
+                        posY.y + blur, 
+                        uv.y);
+                        
+    vec3 rect2 = vec3(tempFill);
+        
+    rect1 *= border;
+    
+    if(displayOnlyBorders)
+    {
+        return vec3(max(rect1.x - rect2.x, 0.0), max(rect1.y - rect2.y, 0.0), max(rect1.z - rect2.z, 0.0)) * vec3(1.0); //returns borders
+    }
+    else
+    {
+        //deletes original square
+        vec3 temp = vec3(max(rect1.x - rect2.x, 0.0), max(rect1.y - rect2.y, 0.0), max(rect1.z - rect2.z, 0.0)) * vec3(1.0);
+        
+        rect2 *= fill;
+    
+        return temp + rect2; //returns filled with borders
+    }
+}
+
+vec3 makeCircle(vec2 uv, vec2 pos, float radius, float blur, vec3 color, bool isPulsing)
+{
+    float circle = 0.0;
+    
+    if(isPulsing)
+    {
+        circle = smoothstep(
+                            radius, 
+                            (sin(iTime * 7.0) / 2.0 * radius) + 0.1 + radius + blur, 
+                            distance(uv, pos)
+                          );
+    }
+    else
+    {
+        circle = smoothstep(
+                            radius,
+                            radius + blur, 
+                            distance(uv, pos)
+                          );
+    }
+    
+    return (1.0 - circle) * color;
+}
+
+mat2 rotate2d(float _angle){
+    return mat2(cos(_angle),-sin(_angle),
+                sin(_angle),cos(_angle));
+}
+
+mat2 scale(vec2 _scale){
+    return mat2(_scale.x,0.0,
+                0.0,_scale.y);
+}
+
+vec2 midpoint(vec2 pos1, vec2 pos2)
+{
+    return vec2((pos1.x + pos2.x) / 2.0, (pos1.y + pos2.y) / 2.0);
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    //simplicity, functional, technical
+    
+    float ratio = iResolution.y / iResolution.x; // resolution
+    vec2 uv = fragCoord/iResolution.xy;
+    uv.x /= ratio;
+    
+    vec2 centerPos = vec2(0.5 / ratio, 0.5);
+    
+    float angle = atan(uv.y - centerPos.y, uv.x - centerPos.x);
+    
+    vec3 whiteCanvas = makeRect(
+                            uv, 
+                            vec2(0.0 / ratio, 0.0), //posX
+                            vec2(1.0 / ratio, 1.0), //posY
+                            0.0, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 1
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    float batSize = 0.2;
+    
+    float batteryBorder = 0.06;
+    
+    float fillMinimum = centerPos.y - batSize - batteryBorder * 2.0;
+    
+    float fillMaximum = centerPos.y + batSize + batteryBorder * 2.0;
+    
+    float batWave = (sin(iTime) / 2.0 + 0.5);
+    
+    float batteryStatus = clamp(fillMaximum * batWave, fillMinimum, 1.0);
+    
+    vec3 batteryFrame = makeRect(
+                            uv, 
+                            vec2(centerPos.x - batSize, centerPos.y - batSize * 2.0), //posX
+                            vec2(centerPos.x + batSize, centerPos.y + batSize * 2.0), //posY
+                            0.01, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 batteryTip = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.1, centerPos.y + 0.4), //posX
+                            vec2(centerPos.x + 0.1, centerPos.y + 0.45), //posY
+                            0.01, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 batteryFill = makeRect(
+                            uv, 
+                            vec2(centerPos.x - batSize + batteryBorder, centerPos.y - batSize - batteryBorder * 2.0), //posX
+                            vec2(centerPos.x + batSize - batteryBorder, centerPos.y + batSize + batteryBorder * 2.0), //posY
+                            0.01, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 batteryGreen = makeRect(
+                            uv, 
+                            vec2(centerPos.x - batSize + batteryBorder, fillMinimum), //posX
+                            vec2(centerPos.x + batSize - batteryBorder, batteryStatus), //posY
+                            0.0, //blur
+                            green, //fill
+                            green, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 batteryRed = makeRect(
+                            uv, 
+                            vec2(centerPos.x - batSize + batteryBorder, fillMinimum), //posX
+                            vec2(centerPos.x + batSize - batteryBorder, batteryStatus), //posY
+                            0.0, //blur
+                            red, //fill
+                            red, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 finalBattery = clamp(batteryFrame - batteryFill + batteryTip, 0.0, 1.0) + mix(batteryRed, batteryGreen, batWave);
+    
+    float chargerSize = 0.05;
+    
+    vec3 chargerFrame = makeRect(
+                            uv, 
+                            vec2(centerPos.x - chargerSize, centerPos.y - chargerSize), //posX
+                            vec2(centerPos.x + chargerSize, centerPos.y + chargerSize), //posY
+                            0.0, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 chargerProng1 = makeRect(
+                            uv, 
+                            vec2(centerPos.x - chargerSize + 0.02, centerPos.y), //posX
+                            vec2(centerPos.x + chargerSize - 0.06, centerPos.y + chargerSize + 0.03), //posY
+                            0.0, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 chargerProng2 = makeRect(
+                            uv, 
+                            vec2(centerPos.x + 0.01, centerPos.y), //posX
+                            vec2(centerPos.x + chargerSize - 0.02, centerPos.y + chargerSize + 0.03), //posY
+                            0.0, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    bool showCharger;
+    
+    vec3 finalCharger = chargerFrame + (chargerProng1 + chargerProng2);
+    
+    vec3 finalColor =  finalBattery + finalCharger;
+    
+    if(batWave < batteryStatus) //checks status of bar for bool
+    {
+        showCharger = true; //show if low bat
+    }
+    else
+    {
+        showCharger = false;
+    }
+    
+    if(!showCharger) //checks bool
+    {
+        finalColor = finalBattery;
+    }
+    else
+    {
+        finalColor =  finalBattery + finalCharger;
+    }
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 2
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    float toasterSize = 0.1;
+    
+    float toastWave = sin(iTime * 2.0) / 2.0 + 0.5;
+    
+    vec3 toasterBody = makeRect(
+                            uv, 
+                            vec2(centerPos.x - toasterSize, centerPos.y - 0.15), //posX
+                            vec2(centerPos.x + toasterSize, centerPos.y), //posY
+                            0.00, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+                            
+    vec3 toasterLeg1 = makeRect(uv, vec2(centerPos.x - toasterSize, centerPos.y - 0.16), vec2(centerPos.x - 0.08, centerPos.y), 0.00, gray, gray, false, 0.0);
+    vec3 toasterLeg2 = makeRect(uv, vec2(centerPos.x + 0.08, centerPos.y - 0.16), vec2(centerPos.x + toasterSize, centerPos.y), 0.00, gray, gray, false, 0.0);
+    
+    vec3 toasterSwitch = makeRect(
+                            uv, 
+                            vec2(centerPos.x + toasterSize, centerPos.y - 0.12 + clamp(toastWave, 0.0, 0.1)), //posX
+                            vec2(centerPos.x + toasterSize + 0.02, centerPos.y - 0.1 + clamp(toastWave, 0.0, 0.1)), //posY
+                            0.00, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 finalToaster =  clamp(toasterBody + (toasterLeg1 + toasterLeg2) + toasterSwitch, 0.0, 1.0);
+    
+    vec2 breadUV = uv;
+    vec2 breadPosX = vec2(centerPos.x - 0.075, centerPos.y + 0.025 - 0.15 + toastWave);
+    vec2 breadPosY = vec2(centerPos.x + 0.075, centerPos.y + 0.025 + toastWave);
+    
+    breadUV -= midpoint(breadPosX, breadPosY);
+    breadUV *= rotate2d(tan(iTime) / 2.0 - 1.0);
+    breadUV += midpoint(breadPosX, breadPosY);
+    
+    vec3 bread = makeRect(
+                            breadUV, 
+                            vec2(breadPosX), //posX
+                            vec2(breadPosY), //posY
+                            0.005, //blur
+                            vec3(242.0 / 255.0, 205.0 / 255.0, 168.0 / 255.0), //fill
+                            vec3(176.0 / 255.0, 106.0 / 255.0, 58.0 / 255.0), //border
+                            false, //display only borders
+                            0.025); //border thickness
+    
+    vec3 table = makeRect(
+                            uv, 
+                            vec2(0.1 / ratio, 0.15), //posX
+                            vec2(0.9 / ratio, centerPos.y - 0.16), //posY
+                            0.00, //blur
+                            vec3(139.0 / 255.0, 69.0 / 255.0, 19.0 / 255.0), //fill
+                            vec3(139.0 / 255.0, 69.0 / 255.0, 19.0 / 255.0), //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 finalColor = finalToaster + clamp(bread - toasterBody * 2.0, 0.0, 1.0) + table;
+    
+    fragColor = vec4(clamp(mix(vec3(186.0 / 255.0, 161.0 / 255.0, 114.0 / 255.0), 
+                                vec3(235.0 / 255.0, 230.0 / 255.0, 216.0 / 255.0), uv.y) - 
+                                finalColor * 10.0, 0.0, 1.0) + finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 3
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    float trafficWave = sin(iTime) * 1.5 + 0.5;
+    
+    vec3 post1 = makeRect(
+                            uv, 
+                            vec2(0.1 / ratio, 0.0), //posX
+                            vec2(0.15 / ratio, 0.9), //posY
+                            0.00, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.00); //border thickness
+                            
+    vec3 post2 = makeRect(
+                            uv, 
+                            vec2(0.15 / ratio, 0.8), //posX
+                            vec2(0.525 / ratio, 0.9), //posY
+                            0.00, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 post3 = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.025, centerPos.y + 0.2), //posX
+                            vec2(centerPos.x + 0.025, centerPos.y + 0.3), //posY
+                            0.00, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 finalPost = post1 + post2 + post3;
+    
+    vec3 trafficBox = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.075, centerPos.y - 0.15), //posX
+                            vec2(centerPos.x + 0.075, centerPos.y + 0.2), //posY
+                            0.00, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.00); //border thickness
+    
+    vec3 redLight = makeCircle(
+                            uv, 
+                            vec2(centerPos.x, centerPos.y + 0.125), //pos
+                            0.04, //radius
+                            0.01, //blur
+                            red, //color
+                            true); //is pulsing
+    
+    vec3 yellowLight = makeCircle(
+                            uv, 
+                            vec2(centerPos.x, centerPos.y + 0.025), //pos
+                            0.04, //radius
+                            0.01, //blur
+                            red + green, //color
+                            true); //is pulsing
+    
+    vec3 greenLight = makeCircle(
+                            uv,  
+                            vec2(centerPos.x, centerPos.y - 0.075), //pos
+                            0.04, //radius
+                            0.01, //blur
+                            green, //color
+                            true); //is pulsing
+    
+    vec3 finalLights = redLight + yellowLight + greenLight;
+    
+    if(trafficWave < 0.0)
+    {
+        finalLights = mix(redLight, yellowLight, clamp(trafficWave, 0.0, 1.0));
+    }
+    else if(trafficWave < 1.0)
+    {
+        finalLights = yellowLight;
+    }
+    else if(trafficWave > 1.0)
+    {
+        finalLights = mix(yellowLight, greenLight, clamp(trafficWave, 0.0, 1.0));
+    }
+    
+    vec3 finalBackground = mix(whiteCanvas, blue + green / 1.5, uv.y * exp(cos(uv.y)));
+    
+    vec3 finalColor = clamp(clamp(finalBackground - (2.0 * finalPost), 0.0, 1.0) + finalPost - trafficBox, 0.0, 1.0) + finalLights;
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 4
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    vec2 gaugeBasePos = vec2(centerPos.x, 0.0);
+    
+    vec3 gaugeBase = makeCircle(
+                            uv,  
+                            gaugeBasePos, //pos
+                            1.0, //radius
+                            0.0, //blur
+                            white, //color
+                            false); //is pulsing
+                            
+    vec2 measureHandUV = uv;
+    measureHandUV -= midpoint(vec2(gaugeBasePos.x - 0.01, gaugeBasePos.y - 0.1), vec2(gaugeBasePos.x + 0.01, gaugeBasePos.y + 0.1));
+    measureHandUV *= rotate2d(sin(iTime + iTime * 2.0) * abs(cos(iTime)));
+    measureHandUV += midpoint(vec2(gaugeBasePos.x - 0.01, gaugeBasePos.y - 0.1), vec2(gaugeBasePos.x + 0.01, gaugeBasePos.y + 0.1));
+    
+    vec3 measureHand = makeRect(
+                            measureHandUV, 
+                            vec2(gaugeBasePos.x - 0.01, gaugeBasePos.y - 0.1), //posX
+                            vec2(gaugeBasePos.x + 0.01, gaugeBasePos.y + 0.8), //posY
+                            0.0, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 finalDividers;
+    
+    for(int i = 0; i < 14; i++)
+    {
+        vec2 dividerUV = uv;
+        dividerUV -= vec2(centerPos.x - 0.01, 0.0);
+        dividerUV *= rotate2d(float(i) * 0.45);
+        dividerUV += vec2(centerPos.x - 0.01, 0.0);
+        
+        float dividerY = centerPos.y + 0.3;
+        
+        if(mod(float(i), 2.0) == 0.0)
+        {
+            dividerY = centerPos.y + 0.2;
+        }
+        
+        vec3 divider = makeRect(
+                            dividerUV, 
+                            vec2(centerPos.x - 0.01, dividerY), //posX
+                            vec2(centerPos.x + 0.01, centerPos.y + 0.4), //posY
+                            0.0, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+                            
+        finalDividers += divider;
+    }
+    
+    vec2 miniGaugeBaseUV = uv;
+    miniGaugeBaseUV -= vec2(centerPos.x - 0.01, 0.0);
+    miniGaugeBaseUV *= rotate2d(sin(iTime / 3.0) * abs(sin(iTime * 2.0)));
+    miniGaugeBaseUV += vec2(centerPos.x - 0.01, 0.0);
+    
+    vec3 miniGaugeBase = makeCircle(
+                            miniGaugeBaseUV,  
+                            gaugeBasePos, //pos
+                            0.6, //radius
+                            0.0, //blur
+                            white, //color
+                            false); //is pulsing
+    
+    vec3 finalMiniDividers;
+    
+    for(int i = 0; i < 14; i++)
+    {
+        vec2 dividerUV = miniGaugeBaseUV;
+        dividerUV -= vec2(centerPos.x - 0.01, 0.0);
+        dividerUV *= rotate2d(float(i) * 0.45);
+        dividerUV += vec2(centerPos.x - 0.01, 0.0);
+        
+        float dividerY = centerPos.y - 0.1;
+        
+        if(mod(float(i), 2.0) == 0.0)
+        {
+            dividerY = centerPos.y - 0.2;
+        }
+        
+        vec3 divider = makeRect(
+                            dividerUV, 
+                            vec2(centerPos.x - 0.01, dividerY), //posX
+                            vec2(centerPos.x + 0.01, centerPos.y), //posY
+                            0.0, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+                            
+        finalMiniDividers += divider;
+    }
+    
+    vec3 finalColor = clamp(gaugeBase - measureHand - finalDividers - miniGaugeBase, 0.0, 1.0) + vec3(measureHand.x, 0.0, 0.0) + finalMiniDividers;
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 5
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    vec2 moonBasePos = vec2(centerPos.x + tan(2.0 + iTime) / 2.0, centerPos.y);
+    //vec2 moonBasePos = vec2(centerPos.x, centerPos.y); //stationary
+    
+    float moonPhaseWave = fract(iTime / PI / 8.0) * 8.0;
+    
+    vec2 translate = vec2(cos(iTime * 2.0) / 1.5, sin(iTime / 5.0) * cos(iTime / 5.0));
+    vec2 moonUV = uv;
+    moonUV += translate * 0.5;
+    
+    float moonAllBlur = 0.05;
+    
+    vec3 moonBase = makeCircle(
+                            moonUV,  
+                            moonBasePos, //pos
+                            0.2, //radius
+                            moonAllBlur, //blur
+                            white, //color
+                            false); //is pulsing
+    
+    vec3 divider = makeRect(
+                            moonUV, 
+                            vec2(moonBasePos.x, moonBasePos.y - 0.5), //posX
+                            vec2(moonBasePos.x + 0.5, moonBasePos.y + 0.5), //posY
+                            moonAllBlur, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 waningCrescent = makeCircle(
+                            moonUV,  
+                            vec2(moonBasePos.x + 0.1, moonBasePos.y + 0.05), //pos
+                            0.2, //radius
+                            moonAllBlur, //blur
+                            gray, //color
+                            false); //is pulsing
+    
+    vec3 waxingCrescent = makeCircle(
+                            moonUV,  
+                            vec2(moonBasePos.x - 0.1, moonBasePos.y + 0.05), //pos
+                            0.2, //radius
+                            moonAllBlur, //blur
+                            gray, //color
+                            false); //is pulsing
+    
+    vec3 finalStars;
+    
+    for(float i = - 0.5; i < 5.0; i += 0.1)
+    {
+        float starSize = 0.005;
+        float spread = i + floor(uv.x);
+        
+        vec2 starUV = uv;
+        starUV -= centerPos;
+        starUV *= rotate2d(0.8); // rotates
+        starUV += centerPos;
+        
+        vec2 starTranslate = -vec2(floor(uv.x) + sin(i) / 2.0 + 0.5 - 0.5, fract(floor(uv.y) + tan(i) + 1.0) - 0.5);
+        starUV += starTranslate * 1.75;
+        
+        vec3 star = makeRect(
+                            starUV, 
+                            vec2(centerPos.x - starSize + sin(iTime / 10.0) / (i * 10.0), centerPos.y - starSize + sin(iTime / 10.0) / (i * 20.0)), //posX
+                            vec2(centerPos.x + starSize + sin(iTime / 10.0) / (i * 10.0), centerPos.y + starSize + sin(iTime / 10.0) / (i * 20.0)), //posY
+                            0.0001, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+        
+        finalStars += star;
+    }
+    
+    //selector
+    vec3 finalColor = moonBase;
+    
+    float cycle = 1.0;
+    
+    if(moonPhaseWave < cycle)
+    {
+        finalColor = clamp(moonBase - divider, 0.0, 1.0); //3/4
+    }
+    else if(moonPhaseWave < cycle * 2.0)
+    {
+        finalColor = moonBase * (2.0 * waxingCrescent) + (moonBase / 2.0); //waning gibb
+    }
+    else if(moonPhaseWave < cycle * 3.0)
+    {
+        finalColor = moonBase; //full moon
+    }
+    else if(moonPhaseWave < cycle * 4.0)
+    {
+        finalColor = moonBase * (2.0 * waningCrescent) + (moonBase / 2.0); //waxing gibb
+    }
+    else if(moonPhaseWave < cycle * 5.0)
+    {
+        finalColor = moonBase * (divider * 2.0) + (moonBase / 2.0); //1/4
+    }
+    else if(moonPhaseWave < cycle * 6.0)
+    {
+        finalColor = clamp(moonBase - waxingCrescent, 0.0, 1.0); //waxing cres
+    }
+    else if(moonPhaseWave < cycle * 7.0)
+    {
+        finalColor = moonBase / 2.0;
+    }
+    else if(moonPhaseWave < cycle * 8.0)
+    {
+        finalColor = clamp(moonBase - waningCrescent, 0.0, 1.0); //waning
+    }
+    
+    finalStars =  clamp(finalStars - finalColor * 10.0, 0.0, 1.0);
+    
+    finalColor += finalStars;
+    
+    //debugger
+    //finalColor = moonBase * (divider * 2.0) + (moonBase / 2.0);
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 6
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    float phoneSize = 0.35;
+    
+    vec2 translate = vec2(cos(iTime * 2.0) / 1.5, 0.0);
+    vec2 screenUV = uv;
+    screenUV += translate * 0.5;
+    
+    vec3 phoneBorder = makeRect(
+                            uv, 
+                            vec2(centerPos.x - phoneSize, centerPos.y - phoneSize * 1.5), //posX
+                            vec2(centerPos.x + phoneSize, centerPos.y + phoneSize * 1.5), //posY
+                            0.005, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 screenHome = makeRect(
+                            screenUV, 
+                            vec2(centerPos.x - centerPos.x, centerPos.y - centerPos.y), //posX
+                            vec2(centerPos.x + centerPos.x, centerPos.y + centerPos.y), //posY
+                            0.0, //blur
+                            0.5 + 0.5*cos(iTime+uv.xyx+vec3(0,2,4) * cos(iTime * 2.0) / 1.5), //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 island = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.2, centerPos.y - 0.45), //posX
+                            vec2(centerPos.x + 0.2, centerPos.y - 0.375), //posY
+                            0.025, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.1); //border thickness
+    
+    //vec2(centerPos.x - phoneSize * 2.0, centerPos.y - phoneSize * 1.5), //posX
+    //vec2(centerPos.x + phoneSize * 2.0, centerPos.y + phoneSize * 1.5), //posY
+    
+    vec3 finalScreen = island;
+    
+    for(float j = 0.0; j < 0.6; j += 0.2) //screen apps
+    {
+        for(float i = 0.0; i < 2.0; i += 0.22)
+        {
+            float appSize = phoneSize / 10.0;
+            
+            float offset = fract(uv.x - uv.y) + fract(i);
+            
+            vec3 app = makeRect(
+                            screenUV, 
+                            vec2(0.35 - appSize + i, 0.9 - appSize - j), //posX
+                            vec2(0.35 + appSize + i, 0.9 + appSize - j), //posY
+                            0.01, //blur
+                            white, //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+        
+            finalScreen += app;
+        }
+    }
+    
+    phoneSize -= 0.025;
+    
+    vec3 phoneScreen = makeRect(
+                            uv, 
+                            vec2(centerPos.x - phoneSize, centerPos.y - (phoneSize * 1.5)), //posX
+                            vec2(centerPos.x + phoneSize, centerPos.y + (phoneSize * 1.5)), //posY
+                            0.0, //blur
+                            screenHome + finalScreen, //fill
+                            white, //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 finalColor = clamp(whiteCanvas - phoneBorder - (phoneScreen * 10.0), 0.0, 1.0) + phoneScreen;
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 7
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    vec3 finalAtoms;
+    
+    vec3 finalElectrons;
+    
+    float nucleusCount = 5.0;
+    float electronsCount = 7.0;
+    
+    uv *= 1.0;
+    
+    for(float j = 0.0; j < nucleusCount; j += 1.0)
+    {
+        vec2 nucleusPos = vec2(centerPos.x + cos(j - iTime * 2.0) / 1.5, centerPos.y + (sin(j - iTime) * cos(j - iTime)));
+        
+        vec3 nucleus = makeCircle(
+                            uv,  
+                            nucleusPos, //pos
+                            0.0005, //radius
+                            0.05, //blur
+                            vec3(mod(tan(iTime) / 2.0 + 0.5, 1.0) + uv.x, 0.5, fract(iTime)), //color
+                            true); //is pulsing
+    
+        finalAtoms += nucleus;
+    
+        vec2 electronUV = uv;
+    
+        float electronSpeed = 5.0;
+    
+        for(float i = 0.0; i < electronsCount; i += 1.0)
+        {
+            vec2 translate = vec2(cos(i - iTime * electronSpeed) / 2.5 * 0.5, sin(i - iTime) * cos(i - iTime));
+            electronUV += translate * 1.0;
+        
+            vec3 electron = makeCircle(
+                            electronUV,  
+                            nucleusPos, //pos
+                            0.0025, //radius
+                            0.025, //blur
+                            vec3(0.5, fract(iTime), mod(tan(iTime) / 2.0 + 0.5, 1.0)), //color
+                            false); //is pulsing
+                            
+            finalElectrons += electron;
+        }
+    }
+    
+    vec3 finalColor = mix(finalAtoms, finalAtoms, sin(iTime)) + (finalAtoms + finalElectrons);
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 8
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    float crosshairThinness = 0.002;
+    float crosshairLength = 40.0;
+    float crosshairWave = abs(sin(iTime * 5.0) / 10.0 + 0.125);
+    
+    vec2 translate = vec2(cos(iTime * 2.0) / 1.5, sin(iTime) * cos(iTime)); //moves crosshair around
+    vec2 crossUV = uv;
+    crossUV += translate * 0.5;
+    //use different uv
+    crossUV -= centerPos;
+    crossUV *= rotate2d(sin(iTime * 2.0)); // rotates
+    crossUV += centerPos;
+    
+    vec3 crosshairNorth = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x - crosshairThinness, centerPos.y - crosshairThinness + crosshairWave), //posX
+                            vec2(centerPos.x + crosshairThinness, centerPos.y + crosshairThinness * crosshairLength + crosshairWave), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 crosshairSouth = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x - crosshairThinness, centerPos.y - crosshairThinness * crosshairLength - crosshairWave), //posX
+                            vec2(centerPos.x + crosshairThinness, centerPos.y + crosshairThinness - crosshairWave), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 crosshairEast = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x + crosshairThinness * crosshairLength + crosshairWave, centerPos.y + crosshairThinness), //posX
+                            vec2(centerPos.x - crosshairThinness + crosshairWave, centerPos.y - crosshairThinness), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 crosshairWest = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x + crosshairThinness - crosshairWave, centerPos.y + crosshairThinness), //posX
+                            vec2(centerPos.x - crosshairThinness * crosshairLength - crosshairWave, centerPos.y - crosshairThinness), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 crosshairDot = makeRect(
+                            crossUV, 
+                            vec2(centerPos.x + crosshairThinness * 2.0, centerPos.y + crosshairThinness * 2.0), //posX
+                            vec2(centerPos.x - crosshairThinness * 2.0, centerPos.y - crosshairThinness * 2.0), //posY
+                            0.0, red, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 finalCrosshair = clamp(crosshairNorth + crosshairSouth + crosshairEast + crosshairWest + crosshairDot, 0.0, 1.0);
+    
+    vec2 target1UV = uv;
+    vec2 t1PosX = vec2(1.3, 0.4);
+    vec2 t1PosY = vec2(t1PosX.x + 0.1, t1PosX.y + 0.1);
+    //calculate midpoint and balance on that
+    target1UV -= vec2((t1PosX.x + t1PosY.x)/ 2.0, (t1PosX.y + t1PosY.y)/ 2.0);
+    target1UV *= scale(vec2(cos(iTime * 5.0) / 5.0 + 1.0)); //wave
+    target1UV += vec2((t1PosX.x + t1PosY.x)/ 2.0, (t1PosX.y + t1PosY.y)/ 2.0);
+    //posX, posY, blur, fill, border, display borders, border thickness
+    vec3 target1 = makeRect(target1UV, t1PosX, t1PosY, 0.0, black, vec3(1.0, 0.0, 0.0), true, 0.01);
+    
+    vec2 target2UV = uv;
+    vec2 t2PosX = vec2(0.8, 0.7);
+    vec2 t2PosY = vec2(t2PosX.x + 0.1, t2PosX.y + 0.1);
+    //calculate midpoint and balance on that
+    target2UV -= vec2((t2PosX.x + t2PosY.x)/ 2.0, (t2PosX.y + t2PosY.y)/ 2.0);
+    target2UV *= scale(vec2(cos(1.0 - iTime * 5.0) / 5.0 + 1.0)); //wave
+    target2UV += vec2((t2PosX.x + t2PosY.x)/ 2.0, (t2PosX.y + t2PosY.y)/ 2.0);
+    
+    vec3 target2 = makeRect(target2UV, t2PosX, t2PosY, 0.0, black, vec3(1.0, 0.0, 0.0), true, 0.01);
+    
+    vec2 target3UV = uv;
+    vec2 t3PosX = vec2(0.5, 0.3);
+    vec2 t3PosY = vec2(t3PosX.x + 0.1, t3PosX.y + 0.1);
+    //calculate midpoint and balance on that
+    target3UV -= vec2((t3PosX.x + t3PosY.x)/ 2.0, (t3PosX.y + t3PosY.y)/ 2.0);
+    target3UV *= scale(vec2(cos(2.0 - iTime * 5.0) / 5.0 + 1.0)); //wave
+    target3UV += vec2((t3PosX.x + t3PosY.x)/ 2.0, (t3PosX.y + t3PosY.y)/ 2.0);
+    
+    vec3 target3 = makeRect(target3UV, t3PosX, t3PosY, 0.0, black, vec3(1.0, 0.0, 0.0), true, 0.01);
+    
+    vec3 finalTargets = target1 + target2 + target3;
+    
+    vec3 barVert = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.85, centerPos.y - 0.40), //posX
+                            vec2(centerPos.x - 0.845, centerPos.y + 0.45), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 barVert1 = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.85, centerPos.y + 0.45), //posX
+                            vec2(centerPos.x - 0.75, centerPos.y + 0.455), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 barVert2 = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.85, centerPos.y), //posX
+                            vec2(centerPos.x - 0.80, centerPos.y + 0.005), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 barVert3 = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.85, centerPos.y - 0.405), //posX
+                            vec2(centerPos.x - 0.825, centerPos.y - 0.4), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 barHori = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.80, centerPos.y - 0.455), //posX
+                            vec2(centerPos.x + 0.85, centerPos.y - 0.45), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 barHori1 = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.8, centerPos.y - 0.45), //posX
+                            vec2(centerPos.x - 0.795, centerPos.y - 0.425), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 barHori2 = makeRect(
+                            uv, 
+                            vec2(centerPos.x, centerPos.y - 0.45), //posX
+                            vec2(centerPos.x + 0.005, centerPos.y - 0.4), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //border thickness
+    
+    vec3 barHori3 = makeRect(
+                            uv, 
+                            vec2(centerPos.x + 0.845, centerPos.y - 0.45), //posX
+                            vec2(centerPos.x + 0.85, centerPos.y - 0.35), //posY
+                            0.0, white, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 verticalCursor = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.85, centerPos.y + (-translate.y / 2.0)), //posX
+                            vec2(centerPos.x - 0.80, centerPos.y + 0.005 + (-translate.y / 2.0)), //posY
+                            0.0, red, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 horizontalCursor = makeRect(
+                            uv, 
+                            vec2(centerPos.x + (-translate.x / 2.0), centerPos.y - 0.45), //posX
+                            vec2(centerPos.x + 0.005 + (-translate.x / 2.0), centerPos.y - 0.4), //posY
+                            0.0, red, vec3(0.0, 0.0, 0.0), false, 0.0); //blur, fill, border, display borders, border thickness
+    
+    vec3 finalBars = (barVert + barVert1 + barVert2 + barVert3) + 
+                    (barHori + barHori1 + barHori2 + barHori3) + 
+                    (verticalCursor + horizontalCursor);
+     
+    vec3 finalColor = finalCrosshair + finalTargets + finalBars;
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 9
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    vec2 wheelPos = vec2(centerPos.x - 0.4, centerPos.y);
+    
+    vec2 wheelUV = uv;
+    wheelUV -= wheelPos;
+    wheelUV *= rotate2d(tan(1.5 - iTime));
+    wheelUV += wheelPos;
+    
+    angle = atan(wheelUV.y - wheelPos.y, wheelUV.x - wheelPos.x);
+    
+    vec3 wheelBase = makeCircle(
+                            wheelUV,  
+                            wheelPos, //pos
+                            0.25, //radius
+                            0.0, //blur
+                            vec3(193.0 / 255.0, 154.0 / 255.0, 107.0 / 255.0), //color
+                            false); //is pulsing
+    
+    vec3 wheelCover = makeCircle(
+                            wheelUV,  
+                            wheelPos, //pos
+                            smoothstep(-0.5, 1.0, cos(angle * 8.0)) * 0.1 + 0.3, //radius
+                            0.0, //blur
+                            vec3(110.0 / 255.0, 38.0 / 255.0, 14.0 / 255.0), //color
+                            false); //is pulsing
+    
+    vec3 wheelPiece = makeCircle(
+                            wheelUV,  
+                            wheelPos, //pos
+                            0.075 * acos(cos(angle * 4.0)), //radius
+                            0.0, //blur
+                            vec3(110.0 / 255.0, 38.0 / 255.0, 14.0 / 255.0), //color
+                            false); //is pulsing
+    
+    vec3 finalWheel = clamp(wheelBase - (wheelPiece * 10.0), 0.0, 1.0) + wheelPiece + wheelCover;
+    
+    vec3 waterfall = makeRect(
+                            uv, 
+                            vec2(0.0, 0.0), //posX
+                            vec2(0.15, 1.0), //posY
+                            0.0, //blur
+                            blue / 2.0, //fill
+                            blue, //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec3 lightbulbBase = makeRect(
+                            uv, 
+                            vec2(centerPos.x + 0.40, centerPos.y - 0.25), //posX
+                            vec2(centerPos.x + 0.60, centerPos.y - 0.15), //posY
+                            0.0, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.0); //border thickness 
+    
+    vec3 bulb = makeCircle(
+                            uv,  
+                            vec2(centerPos.x + 0.5, centerPos.y - 0.05), //pos
+                            0.15, //radius
+                            0.0, //blur
+                            vec3(vec2((red + green) + tan(iTime)), 0.0), //color
+                            false); //is pulsing
+    
+    vec3 finalBulb = clamp(lightbulbBase - bulb * 2.0, 0.0, 1.0) + bulb;
+    
+    vec3 wire = makeRect(
+                            uv, 
+                            vec2(centerPos.x - 0.4, centerPos.y - 0.225), //posX
+                            vec2(centerPos.x + 0.4, centerPos.y - 0.2), //posY
+                            0.0, //blur
+                            gray, //fill
+                            gray, //border
+                            false, //display only borders
+                            0.0); //border thickness 
+    
+    vec3 finalBackground = mix(green / 4.0, blue + green / 1.5, uv.y);
+    
+    vec3 finalColor = waterfall + clamp(finalBackground - (finalWheel + finalBulb + wire) * 50.0, 0.0, 1.0) + finalWheel + finalBulb;
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //==================================================================================================================================
+    //==================================================================================================================================
+    //shader 10
+    //==================================================================================================================================
+    //==================================================================================================================================
+    /*
+    float boxSize = 0.4;
+    
+    vec3 box = makeRect(
+                            uv, 
+                            vec2(centerPos.x - boxSize, centerPos.y - boxSize * 1.5), //posX
+                            vec2(centerPos.x + boxSize, centerPos.y + boxSize * 1.5), //posY
+                            0.01, //blur
+                            mix(green, vec3(28.0 / 255.0, 130.0 / 255.0, 173.0 / 255.0) / 2.5, uv.y), //fill
+                            vec3(28.0 / 255.0, 130.0 / 255.0, 173.0 / 255.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec2 batUV = uv;
+    
+    batUV -= vec2(centerPos.x + 0.05, centerPos.y - 0.01);
+    batUV *= rotate2d(clamp(sin(fract(iTime / 2.0) * 5.0 - 3.6) - 0.5, -2.0, 0.2));
+    batUV += vec2(centerPos.x + 0.05, centerPos.y);
+    
+    batUV -= vec2(centerPos.x + 0.05, centerPos.y - 0.01);
+    batUV *= scale(vec2(sin(-iTime * PI) / 2.0 + 1.5));
+    batUV += vec2(centerPos.x + 0.05, centerPos.y);
+    
+    vec3 bat = makeRect(
+                            batUV, 
+                            vec2(centerPos.x + 0.05, centerPos.y - 0.01), //posX
+                            vec2(centerPos.x + 0.06, centerPos.y + 0.09), //posY
+                            0.0, //blur
+                            vec3(210.0 / 255.0, 180.0 / 255.0, 140.0 / 255.0), //fill
+                            vec3(210.0 / 255.0, 180.0 / 255.0, 140.0 / 255.0), //border
+                            false, //display only borders
+                            0.0); //border thickness
+    
+    vec2 ballPos = vec2(centerPos.x + clamp(sin(-iTime * PI), 0.0, 1.0), centerPos.y);
+    
+    vec2 ballUV = uv;
+    
+    ballUV -= centerPos;
+    ballUV *= scale(vec2(fract(-iTime / 2.0) * 25.0));
+    ballUV += centerPos;
+    
+    ballUV -= ballPos;
+    ballUV *= rotate2d(tan(1.5 - iTime * PI) / 2.0);
+    ballUV += ballPos;
+    
+    vec3 baseball = makeCircle(
+                            ballUV,  
+                            vec2(ballPos.x, ballPos.y), //pos
+                            0.15, //radius
+                            0.0, //blur
+                            white, //color
+                            false); //is pulsing
+    
+    float ballMirror = 0.2;
+    
+    vec3 baseball1 = makeCircle(
+                            ballUV,  
+                            vec2(ballPos.x - ballMirror, ballPos.y), //pos
+                            0.15, //radius
+                            0.0, //blur
+                            white, //color
+                            false); //is pulsing
+    
+    vec3 baseball2 = makeCircle(
+                            ballUV,  
+                            vec2(ballPos.x + ballMirror, ballPos.y), //pos
+                            0.15, //radius
+                            0.0, //blur 
+                            white, //color
+                            false); //is pulsing
+    
+    vec3 baseball3 = makeCircle(
+                            ballUV,  
+                            vec2(ballPos.x - ballMirror - 0.005, ballPos.y), //pos
+                            0.15, //radius
+                            0.0, //blur
+                            white, //color
+                            false); //is pulsing
+    
+    vec3 baseball4 = makeCircle(
+                            ballUV,  
+                            vec2(ballPos.x + ballMirror + 0.005, ballPos.y), //pos
+                            0.15, //radius
+                            0.0, //blur
+                            white, //color
+                            false); //is pulsing
+    
+    vec3 finalBall = clamp(baseball - (baseball1 + baseball2), 0.0, 1.0) + 
+                            (baseball * red * (baseball1 + baseball2) + 
+                            baseball * (baseball3 + baseball4));
+    
+    vec3 finalBackground = vec3(28.0 / 255.0, 130.0 / 255.0, 173.0 / 255.0);
+    
+    vec3 finalColor = clamp((finalBackground + box) - (bat + baseball) * 10.0, 0.0, 1.0) + 
+                            clamp(bat - baseball, 0.0, 1.0) + finalBall;
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+}
