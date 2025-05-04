@@ -1,0 +1,132 @@
+// module 9
+
+float random (in vec2 st) {
+    return fract(sin(dot(st.xy, vec2(12.9898,78.233))) * 43758.5453123);
+}
+
+float bars(float uvY, float rng, float speed, float size, float offset)
+{
+    return step(size, random(floor(vec2(uvY * rng) ) - floor(offset)));
+}
+
+float jnoise(vec2 uv)
+{
+    uv += distance(uv, vec2(0.0));
+    
+    vec2 index = floor(uv);
+    vec2 fractal = fract(uv);
+    float fracfloat = fractal.x * fractal.y;
+    
+    float a, b, c, d;
+    
+    a = random(index);
+    b = random(index + vec2(1.0, 0.0));
+    c = random(index + vec2(0.0, 1.0));
+    d = random(index + vec2(1.0, 1.0));
+    
+    vec2 u = (mod(fractal * fractal, distance(fractal, index)) * (5.0 - (4.015 * fractal))) * fractal;
+    /*
+    a += smoothstep(a, b, dot(a, b));
+    b += smoothstep(b, c, dot(b, c));
+    c += smoothstep(c, d, dot(c, d));
+    d += smoothstep(d, a, dot(d, a));
+    */
+    float final = mix(a, b, u.x) +
+            (c - a)* u.y * (1.0 - u.x) +
+            (d - b) * u.x * u.y;
+    
+    //return 2.0 * smoothstep(final, fracfloat, distance(uv, index));
+    return final;
+}
+
+vec3 makeCircle(vec2 uv, vec2 pos, float radius, float blur, vec3 color, bool isPulsing)
+{
+    float circle = 0.0;
+    
+    if(isPulsing)
+    {
+        circle = smoothstep(
+                            radius, 
+                            (sin(iTime * 7.0) / 2.0 * radius) + 0.1 + radius + blur, 
+                            distance(uv, pos)
+                          );
+    }
+    else
+    {
+        circle = smoothstep(
+                            radius,
+                            radius + blur, 
+                            distance(uv, pos)
+                          );
+    }
+    
+    return (1.0 - circle) * color;
+}
+
+vec3 blob(vec3 shapes, vec2 uv, float zoom, float ratio, vec2 pos)
+{
+    for(float i = 0.0; i < 15.0; i += 1.0)
+    {
+        
+        shapes += makeCircle(uv, 
+                            pos, 
+                            jnoise(uv - iTime * 3.0) * iTime / 2.0, 
+                            0.5, 
+                            vec3(0.8, 0.1, 0.0), 
+                            false);
+    }
+    
+    return shapes;
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    vec2 uv = fragCoord/iResolution.xy;
+    
+    //ps15
+    /*
+    uv *= vec2(50.0);
+    vec2 index = floor(uv);
+    //uv /= 100000.0;
+    
+    float speed = iMouse.x / 100.0;
+    float size = iMouse.y / iResolution.y;
+    float rng = floor(floor(iTime) * speed) * 0.5;
+    float offset = iTime * rng;
+    
+    if(fract(uv.y * 0.5) < 0.5)
+    {
+        offset *= -1.0;
+    }
+    
+    vec3 finalColor = vec3(
+                            bars(uv.x, rng, speed * index.y, size, offset * index.y), 
+                            bars(uv.x, rng, speed * index.y, size, offset * index.y), 
+                            bars(uv.x, rng, speed * index.y, size, offset * index.y));
+    
+    fragColor = vec4(finalColor, 1.0);
+    */
+    
+    //ps16
+    /*
+    float zoom = 7.5;
+    uv *= zoom;
+    //uv += 2.0;
+    float ratio = iResolution.y / iResolution.x;
+    uv.x /= ratio;
+    
+    vec3 shapes;
+    
+    for(float i = 0.0; i < 3.0; i += 0.5)
+    {
+        shapes = blob(shapes, uv, zoom, ratio, vec2((zoom * 0.5) / ratio * i, zoom * 0.5));
+    }
+    
+    shapes -= 0.5;
+    
+    //shapes = vec3(jnoise(uv) / 2.0);
+    
+    vec3 finalColor = vec3(shapes);
+    fragColor = vec4(finalColor, 1.0);
+    */
+}
