@@ -1,0 +1,30 @@
+// module 3
+
+//https://colorpalettes.net/color-palette-2096/
+vec3 darkPink = vec3(0.5960, 0.1960, 0.4588);
+vec3 darkerPink = vec3(0.5058, 0.1137, 0.3686);
+vec3 red = vec3(0.9921, 0.1843, 0.1411);
+vec3 orange = vec3(1.0, 0.4352, 0.0039);
+vec3 yellow = vec3(0.9960, 0.8470, 0.0);
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    //ps05
+    /*
+    vec2 uv = fragCoord/iResolution.xy;
+
+    vec3 col = vec3(mix(darkerPink, yellow, sin(iTime + uv.y) - uv.y));
+ 
+    fragColor = vec4(col,1.0);
+    */
+    
+    //ps06
+    /*
+    vec2 uv = fragCoord/iResolution.xy;
+    
+    float stripedRed = 1.0 - step(0.66, uv.y);
+    float stripedYellow = 1.0 - step(0.33, uv.y);
+
+    fragColor = vec4(stripedRed, stripedYellow, 0.0 ,1.0);
+    */
+}
