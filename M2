@@ -1,0 +1,82 @@
+// module 2
+
+#define PI     3.14159265
+float expImpulse( float x, float k )
+{
+    float h = k*x;
+    return h*exp(1.0-h);
+}
+float sinc( float x, float k )
+{
+    float a = PI*((k*x-1.0));
+    return sin(a)/a;
+}
+float gain(float x, float k) 
+{
+    float a = 0.5*pow(2.0*((x<0.5)?x:1.0-x), k);
+    return (x<0.5)?a:1.0-a;
+}
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    //ps03
+    //a
+    /*
+    vec2 uv = fragCoord/iResolution.xy;
+    fragColor = vec4(uv.x * uv.y);
+    */
+    
+    //b
+    /*
+    vec2 uv = iMouse.xy/iResolution.xy;
+    fragColor = vec4(uv.x, uv.y, 0.0, 1.0);
+    */
+    
+    //ps04
+    /*
+    vec2 uv = fragCoord/iResolution.xy;
+    fragColor = vec4(pow(uv.x, uv.y * 20.0));
+    */
+    
+    //a
+    /*
+    vec2 uv = fragCoord/iMouse.xy;
+    fragColor = vec4(exp(uv.x / uv.y) - 1.0);
+    */
+    
+    //b
+    /*
+    vec2 uv = fragCoord/iResolution.xy;
+    fragColor = vec4(3.3 * log(uv.x * uv.y) + 2.5);
+    */
+    
+    //c
+    /*
+    vec2 uv = fragCoord/iResolution.xy;
+    fragColor = vec4(sqrt(uv.x * uv.y));
+    */
+    
+    //d
+    /*
+    vec2 uv = mod(fragCoord, iMouse.xy);
+    fragColor = vec4(uv, uv);
+    */
+    
+    //e
+    /*
+    vec2 uv = fragCoord/iResolution.xy;
+    fragColor = vec4(fract(uv.x * 5.0));
+    */
+    
+    //f
+    /*
+    vec2 uv = -fragCoord/iMouse.xy;
+    fragColor = vec4(abs(uv.x));
+    */
+    
+    //g
+    /*
+    vec2 uv = fragCoord/iMouse.xy;;
+    fragColor = vec4(expImpulse(-tan(uv.x), cos(uv.y * iTime) / 10.0), abs(sinc(sin(uv.x), tan(uv.y * iTime))), gain(cos(uv.x), cos(uv.y * iTime)), 1.0);
+    */
+    
+}
