@@ -1,0 +1,44 @@
+// module 1
+
+vec4 giveColor()
+{
+    return vec4(1.0, 0, 0, 0);
+}
+
+void mainImage( out vec4 fragColor, in vec2 fragCoord )
+{
+    //ps01
+    /*
+    vec4 red = giveColor();
+    fragColor = red;
+    */
+    
+    //ps02
+    /*
+    vec4 red = giveColor();
+    fragColor = vec4(sin(red.x * iTime), red.yzw);
+    */
+
+    //a
+    /*
+    vec4 red = giveColor();
+    fragColor = vec4(sin(red.x * iTime * 2.0) * .5 + .5, red.yzw);
+    */
+    
+    //b
+    /*
+    vec4 red = giveColor();
+    fragColor = vec4(sin(red.x * iTime / 100.0) * .5 + .5, red.yzw);
+    */
+    
+    //c
+    /*
+    vec4 red = giveColor();
+    fragColor = vec4(sin(red.x * iTime * 10000000000000.0) * .5 + .5, red.yzw);
+    */
+    
+    //d
+    /*
+    fragColor = vec4(sin(iTime * 5.0), cos(iTime), sin(iTime) * cos(iTime) / 2.0, 1.0);
+    */
+}
